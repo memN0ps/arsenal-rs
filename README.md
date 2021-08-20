@@ -1,4 +1,4 @@
-# MimiRust - Hacking the Windows operating system to hand us the keys to the kingdom
+# MimiRust - Hacking the Windows operating system to hand us the keys to the kingdom with Rust.
 <p>MimiRust is a program based on the wdigest attack vector implementation employed within Mimikatz. MimiRust has been made to extract pain-text passwords out of the memory of certain Windows operating systems. Also like the name suggests MimiRust has been made in the Rust language.</p>
 <h1>Which operating systems does MimiRust support</h1>
 <p>It supports the following operating systems:</p>
