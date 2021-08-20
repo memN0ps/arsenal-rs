@@ -174,7 +174,7 @@ fn main() -> Result<()> {
 fn banner() {
     println!("                                  
              [*] Made by yours one and only Thotty [*]
-      [?] Use to get plain-text credentials of the 64-bit OS.[?]    \n
+      [?] Use to get credentials of the 64-bit OS.[?]    \n
                            [+] Supports [+]
     [!] Win7 x64/Windows Server 2008 x64/Windows Server 2008R2 x64 [!]
     [!] Win8 x64/Windows Server 2012 x64/Windows Server 2012R2 x64 [!]
