@@ -11,7 +11,7 @@
   <li>Windows Server 2012R2 x64</li>
   <li>Win10_1507(and before 1903) x64</li>
 </ul>
-<small>Note: out of some tests it turned out that it does not dump credentials with some of the above operating systems. (however on other installations of the same operating system it did.)</small>
+<small>Note: out of some tests it turned out that it does not dump credentials with some of the above operating systems. (however on other installations of the same operating system it did.)</small><br>
 <br>
 <h2>Why was MimiRust made</h2>
 <p>I was bored in my first year of my CyberSecurity bachelors, as there wasn't anything cyber related being taught. Thus I decided I was going to start my own project, I already knew of Mimikatz for a while and why it was used however I did not know how it did it's thing though, so to get this knowledge I decided to start learning how it does it's thing and thus mimiRust was created.</p>
