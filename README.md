@@ -15,3 +15,6 @@
 <br>
 <h1>Why was MimiRust made</h1>
 <p>I was bored in my first year of my CyberSecurity bachelors, as there wasn't anything cyber related being taught. Thus I decided I was going to start my own project, I already knew of Mimikatz for a while and why it was used however I did not know how it did it's thing though, so to get this knowledge I decided to start learning how it does it's thing and thus mimiRust was created.</p>
+<br>
+<h1>Demo</h1>
+
