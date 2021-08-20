@@ -20,4 +20,4 @@
 <p>For the future I want to add more functionality/capability to MimiRust (like getting NTLM hashes) so it can be fully employed inside of redteam operations.</p>
 <br>
 <h2>Demo</h2>
-![Alt Text](https://raw.github.com/ThottySploity/mimiRust/main/demo.gif)
+![](https://raw.github.com/ThottySploity/mimiRust/main/demo.gif)
