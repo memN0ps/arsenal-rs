@@ -1,5 +1,10 @@
 # MimiRust - Hacking the Windows operating system to hand us the keys to the kingdom with Rust.
-<p>MimiRust is a program based on the wdigest attack vector implementation employed within Mimikatz. MimiRust has been made to extract the current users Windows password out of memory. Also like the name suggests MimiRust has been made in the Rust language.</p>
+<p>MimiRust is a post-exploitation tool that can be used within redteam operations. Like the name suggests the entire project is made within the Rust language. MimiRust is capable of the following actions:</p>
+<ul>
+  <li>Spawning any process as SYSTEM</li>
+  <li>Extracting Windows passwords out of memory through the wdigest attack vector.</li>
+  <li>Todo: Extracting Windows NTLM hashes from user accounts</li>
+</ul>
 <h2>Which operating systems does MimiRust support</h2>
 <p>It supports the following operating systems:</p>
 <ul>
