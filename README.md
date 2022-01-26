@@ -3,10 +3,11 @@
 <ul>
   <li>Spawning any process as SYSTEM</li>
   <li>Extracting Windows passwords out of memory through the wdigest attack vector.</li>
+  <li>Extracting Windows NTLM hashes from user accounts (aes / des)</li>
 </ul><br>
 <p>Todo:</p>
 <ul>
-  <li>Extracting Windows NTLM hashes from user accounts</li>
+  <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
 </ul>
 
 <h2>Which operating systems does MimiRust support</h2>
