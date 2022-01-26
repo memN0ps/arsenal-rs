@@ -1,0 +1,12 @@
+C:\Users\John\Desktop\mimiRust\target\debug\deps\textwrap-b0250d9903b4723e.rmeta: C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\lib.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\indentation.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\word_separators.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\word_splitters.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\wrap_algorithms.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\core.rs
+
+C:\Users\John\Desktop\mimiRust\target\debug\deps\libtextwrap-b0250d9903b4723e.rlib: C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\lib.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\indentation.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\word_separators.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\word_splitters.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\wrap_algorithms.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\core.rs
+
+C:\Users\John\Desktop\mimiRust\target\debug\deps\textwrap-b0250d9903b4723e.d: C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\lib.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\indentation.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\word_separators.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\word_splitters.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\wrap_algorithms.rs C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\core.rs
+
+C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\lib.rs:
+C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\indentation.rs:
+C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\word_separators.rs:
+C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\word_splitters.rs:
+C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\wrap_algorithms.rs:
+C:\Users\John\.cargo\registry\src\github.com-1ecc6299db9ec823\textwrap-0.14.2\src\core.rs:

