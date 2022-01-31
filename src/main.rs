@@ -2,10 +2,15 @@ pub mod password_grabbing;
 pub mod escalation_permissions;
 pub mod utilities;
 
-use password_grabbing::{wdigest::Wdigest, ntlm::Ntlm};
+use password_grabbing::{
+    wdigest::Wdigest, 
+    ntlm::Ntlm
+};
+
 use escalation_permissions::Escalation;
 
 use clap::Parser;
+use anyhow::Result;
 
 #[derive(Parser, Debug)]
 #[clap(about, author)]
@@ -24,7 +29,7 @@ struct Args {
 }
 
 
-fn main() {
+fn main() -> Result<()> {
     let args = Args::parse();
 
     if args.spawn_path.len() == 0 && args.dump_credentials == false && args.dump_ntlm_hashes == false {
@@ -32,14 +37,15 @@ fn main() {
     }
 
     if args.spawn_path.len() > 0 {
-        Escalation::get_system(args.spawn_path);
+        Escalation::get_system(args.spawn_path)?;
     }
 
     if args.dump_credentials {
-        Wdigest::grab();
+        Wdigest::grab()?;
     }
 
     if args.dump_ntlm_hashes {
-        Ntlm::grab();
+        Ntlm::grab()?;
     }
+    Ok(())
 }

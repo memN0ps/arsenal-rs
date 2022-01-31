@@ -1,46 +1,29 @@
 extern crate des;
 
-use des::{decrypt, encrypt};
+use des::decrypt;
 
 pub mod powershell_command;
-
-use winapi::um::processthreadsapi::{OpenProcessToken, GetCurrentProcess};
-use winapi::um::securitybaseapi::{GetTokenInformation, AllocateAndInitializeSid, EqualSid};
-
-use winapi::um::winnt::{TOKEN_QUERY, TOKEN_USER, PSID, SECURITY_NT_AUTHORITY, SECURITY_LOCAL_SYSTEM_RID, SID_IDENTIFIER_AUTHORITY, TokenUser, LPSTR, PSTR};
-use winapi::shared::ntdef::{HANDLE, FALSE, NULL};
-
-use winapi::shared::sddl::ConvertSidToStringSidW;
-
-use winapi::um::handleapi::CloseHandle;
-use winapi::shared::minwindef::{DWORD, HKEY};
-
-use winapi::um::winreg::{RegOpenKeyExA, RegCloseKey, RegQueryInfoKeyW};
-
-use winapi::ctypes::c_int;
-
-use winapi::um::winnls::CP_UTF8;
-use winapi::um::stringapiset::MultiByteToWideChar;
-use winapi::shared::ntdef::LPWSTR;
 
 use winreg::enums::*;
 use winreg::RegKey;
 
 use regex::Regex;
 
-use anyhow::{anyhow, Result};
-use std::ffi::OsString;
+use anyhow::{
+    anyhow, 
+    Result
+};
 
-use std::ffi::OsStr;
-use std::os::windows::ffi::OsStrExt;
-use std::ffi::CString;
-use std::io::Error;
-use std::ptr::{null, null_mut};
 use std::process::Command;
 use std::fmt::Write;
 
 use aes::Aes128;
-use block_modes::{BlockMode, Cbc};
+
+use block_modes::{
+    BlockMode, 
+    Cbc
+};
+
 use block_modes::block_padding::NoPadding;
 
 type Aes128Cbc = Cbc<Aes128, NoPadding>;
@@ -114,20 +97,13 @@ fn vector_str_to_vector_u8(input: Vec<String>) -> Vec<u8> {
     let mut output = vec![];
 
     for i in input {
-        let byte = match i.parse::<u8>() {
+        match i.parse::<u8>() {
             Ok(byte) => output.push(byte),
             Err(_) => continue,
         };
     }
 
     output
-}
-
-fn from_wide_string(s: &[u16]) -> String {         
-    use std::ffi::OsString;         
-    use std::os::windows::ffi::OsStringExt;         
-    let slice = s.split(|&v| v == 0).next().unwrap();         
-    OsString::from_wide(slice).to_string_lossy().into()     
 }
 
 fn convert_string(input: &[u8]) -> String {
@@ -195,63 +171,19 @@ fn get_class_registry() -> String {
 
     let mut total = String::new();
 
-    unsafe {
-        for keyname in keys {
-            let argument = format!("{}{}", powershell_command::get_imports(), powershell_command::get_keyclass(keyname));
-            let mut command = Command::new("powershell");
-            let output = format!("{:?}", command.arg(argument).output());
+    for keyname in keys {
+        let argument = format!("{}{}", powershell_command::get_imports(), powershell_command::get_keyclass(keyname));
+        let mut command = Command::new("powershell");
+        let output = format!("{:?}", command.arg(argument).output());
 
-            let split1: Vec<&str> = output.split(r#"stdout: ""#).collect();
-            let split2: Vec<&str> = split1[1].split(r#"\r\n""#).collect();
-            let output = split2[0];
+        let split1: Vec<&str> = output.split(r#"stdout: ""#).collect();
+        let split2: Vec<&str> = split1[1].split(r#"\r\n""#).collect();
+        let output = split2[0];
 
-            total.push_str(output);
-        }
+        total.push_str(output);
     }
+
     return total;
-}
-
-fn widen(st: &str) -> Vec<u16> {
-    unsafe {
-        let size_needed = MultiByteToWideChar(
-            CP_UTF8,
-            0,
-            st.as_ptr() as *mut i8,
-            st.len() as c_int,
-            null_mut::<u16>(),
-            0);
-        if 0 == size_needed {
-            panic!(format!("Error on string widen calculation, \
-            {}", Error::last_os_error()));
-        }
-        let mut res: Vec<u16> = Vec::new();
-        res.resize((size_needed + 1) as usize, 0);
-        let chars_copied = MultiByteToWideChar(
-            CP_UTF8,
-            0,
-            st.as_ptr() as *mut i8,
-            st.len() as c_int,
-            res.as_mut_ptr(),
-            size_needed);
-        if chars_copied != size_needed {
-            panic!(format!("Error on string widen execution, \
-            {}", Error::last_os_error()));
-        }
-        res.resize(size_needed as usize, 0);
-        res
-    }
-}
-
-fn str_to_string(input: Vec<&str>) -> String {
-    let mut output: String = String::new();
-    for i in input {
-        output.push_str(i);
-    }
-    return output;
-}
-
-fn to_wchar(str : &str) -> Vec<u16> {
-    OsStr::new(str).encode_wide(). chain(Some(0).into_iter()).collect()
 }
 
 fn to_rid(input: String) -> usize {

