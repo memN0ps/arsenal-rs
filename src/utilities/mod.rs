@@ -30,6 +30,12 @@ use winapi::shared::minwindef::FALSE;
 use std::io::Error;
 use std::ptr::null_mut;
 
+use std::io::{
+    stdin,
+    stdout,
+    Write
+};
+
 const SE_DEBUG_NAME: [u16 ; 17] = [83u16, 101, 68, 101, 98, 117, 103, 80, 114, 105, 118, 105, 108, 101, 103, 101, 0];
 
 pub struct Utils;
@@ -82,5 +88,47 @@ impl Utils {
             );
             return token_ele.TokenIsElevated == 1;
         }
+    }
+
+    pub fn is_system() -> bool {
+        if format!("{}", whoami::username()).to_lowercase() == "system" {
+            return true;
+        }
+        return false;
+    }
+
+    pub fn get_user_input(perms: u32) -> Vec<String> {
+        let mut s = String::new();
+        let mut result: Vec<String> = vec![];
+
+        match perms {
+            0 => {
+                //System: @
+                print!("mimiRust @ ");
+            },
+            1 => {
+                //Admin: #
+                print!("mimiRust # ");
+            },
+            _ => {
+                //User: $
+                print!("mimiRust $ ");
+            },
+        };
+
+        let _=stdout().flush();
+        stdin().read_line(&mut s).expect("Did not enter correct characters");
+        if let Some('\n')=s.chars().next_back() {
+            s.pop();
+        }
+        if let Some('\r')=s.chars().next_back() {
+            s.pop();
+        }
+        
+        for string in s.split(" ") {
+            result.push(string.to_string());
+        }
+
+        return result;
     }
 }

