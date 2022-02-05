@@ -16,7 +16,6 @@
             mimiRust $ means it's running without elevated privileges
              mimiRust # means it's running with elevated privileges
               mimiRust @ means it's running with system privileges
-
 mimiRust $
 
 </code>
