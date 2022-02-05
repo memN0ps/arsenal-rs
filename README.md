@@ -30,4 +30,4 @@
 <p>For the future I want to add more functionality/capability to MimiRust (like getting NTLM hashes) so it can be fully employed inside of redteam operations.</p>
 <br>
 <h2>Demo</h2>
-<img src=https://raw.github.com/ThottySploity/mimiRust/main/demo.gif alt="demo video"/>
+<iframe src="https://player.vimeo.com/video/673938805?h=e7b5ea87a7" width="640" height="360" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
