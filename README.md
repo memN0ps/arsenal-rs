@@ -10,17 +10,9 @@
   <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
 </ul>
 
-<h2>Which operating systems does MimiRust support</h2>
-<p>It supports the following operating systems:</p>
-<ul>
-  <li>Win7 x64</li>
-  <li>Windows Server 2008 x64</li>
-  <li>Windows Server 2008R2 x64</li>
-  <li>Win8 x64</li>
-  <li>Windows Server 2012 x64</li>
-  <li>Windows Server 2012R2 x64</li>
-  <li>Win10_1507(and before 1903) x64</li>
-</ul>
+<h2>Quick usage:</h2>
+<code>test</code>
+
 <small>Note: out of some tests it turned out that it does not dump credentials with some of the above operating systems. (however on other installations of the same operating system it did.)</small><br>
 <br>
 <h2>Why was MimiRust made</h2>
