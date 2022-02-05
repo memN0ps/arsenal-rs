@@ -16,7 +16,18 @@
             mimiRust $ means it's running without elevated privileges
              mimiRust # means it's running with elevated privileges
               mimiRust @ means it's running with system privileges
-    
+
+
+    mimiRust $ ?
+
+    dump-credentials             Dumps systems credentials through Wdigest
+    dump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions)
+    spawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location
+    shell <SHELL COMMAND>        Execute a shell command through cmd, returns output
+    exit                         Exits out of mimiRust
+
+
+
     mimiRust $
 
 </code>
