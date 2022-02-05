@@ -48,6 +48,8 @@ use anyhow::{
     Result
 };
 
+use std::process::Command;
+
 use std::io::Error;
 
 use std::ffi::OsStr;
@@ -68,6 +70,31 @@ impl Escalation {
             }
         } else {
             println!("[-] Program requires atleast administrative permissions");
+        }
+        Ok(())
+    }
+
+    pub fn execute_shell(args: Vec<String>) -> Result<()> {
+        let mut arguments: Vec<&str> = vec![];
+        arguments.push("/C");
+
+        for arg in &args[1..] {
+            arguments.push(arg);
+        }
+        
+        let output = Command::new("cmd.exe")
+            .args(arguments)
+            .output()
+            .expect("failed to execute process");
+
+        if format!("{}", output.status) == "exit code: 0" {
+            if output.stdout.len() > 0 {
+                println!("{}", std::str::from_utf8(&output.stdout)?);
+            } else {
+                println!("[+] Successfully executed command\n");
+            }
+        } else {
+            println!("{}", std::str::from_utf8(&output.stderr)?);
         }
         Ok(())
     }

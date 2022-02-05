@@ -1,9 +1,6 @@
 extern crate des;
 
-use crate::{
-    utilities::Utils,
-    privilege::Escalation,
-};
+use crate::utilities::Utils;
 
 use des::decrypt;
 
@@ -54,13 +51,6 @@ impl Ntlm {
         }
         Ok(())
     }
-}
-
-fn get_executable_path() -> String {
-    match std::env::current_exe() {
-        Ok(path) => return path.display().to_string(),
-        Err(e) => return e.to_string(),
-    };
 }
 
 fn get_bootkey(input: String) -> Result<Vec<u8>> {
