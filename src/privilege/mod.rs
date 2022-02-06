@@ -77,11 +77,11 @@ impl Escalation {
     pub fn execute_shell(args: Vec<String>) -> Result<()> {
         let mut arguments: Vec<&str> = vec![];
         arguments.push("/C");
-
+        
         for arg in &args[1..] {
             arguments.push(arg);
         }
-        
+
         let output = Command::new("cmd.exe")
             .args(arguments)
             .output()
