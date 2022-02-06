@@ -51,7 +51,7 @@
 </ul>
 <p>MimiRust also allows command line interpretation through mimiRust.exe --help</p>
 
-#### Dumping plaintext credentials from memory through wdigest ####
+### Dumping plaintext credentials from memory through wdigest ###
 <code>mimiRust # dump-credentials</code>
 
 <small>Note: out of some tests it turned out that it does not dump credentials with some of the above operating systems. (however on other installations of the same operating system it did.)</small><br>
