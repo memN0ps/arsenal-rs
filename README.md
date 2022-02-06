@@ -76,7 +76,7 @@ https://vimeo.com/673938805
 <br>
 <h2>Author</h2>
 <h3>Why was MimiRust made</h3>
-<p>I was bored in my first year of my CyberSecurity bachelors, as there wasn't anything cyber related being taught. Thus I decided I was going to start my own project, I already knew of Mimikatz for a while and why it was used however I did not know how it did it's thing, so to get this knowledge I decided to start learning how it does it's thing and thus mimiRust was created.</p>
+<p>I was bored in my first year of my CyberSecurity bachelors, as there wasn't anything cyber related being taught. Thus I decided I was going to start my own project, I already knew of Mimikatz for a while and why it was used. However I did not know how it did it's thing, so to get this knowledge I decided to start learning how it does it's thing and thus mimiRust was created.</p>
 <br>
 <h3>Future plans</h3>
 <p>For the future I want to add more functionality/capability to MimiRust (like getting NTLM hashes) so it can be fully employed inside of redteam operations.</p>
