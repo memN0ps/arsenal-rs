@@ -45,9 +45,9 @@
 <h2>Quick usage:</h2>
 <p>To get the help message for mimiRust you can either startup the program in a terminal and type the following;</p>
 <ul>
-  <li><code>mimiRust # ?</code</li>
-  <li><code>mimiRust # h</code</li>
-  <li><code>mimiRust # help</code</li>
+  <li><code>mimiRust # ?</code></li>
+  <li><code>mimiRust # h</code></li>
+  <li><code>mimiRust # help</code></li>
 </ul>
 <p>MimiRust also allows command line interpretation through mimiRust.exe --help</p>
 
