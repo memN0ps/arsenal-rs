@@ -51,21 +51,21 @@
   <li><code>mimiRust # help</code></li>
 </ul>
 
-### Dumping plaintext credentials from memory through wdigest ###
+<h3>Dumping plaintext credentials from memory through wdigest</h3>
 <code>mimiRust # dump-credentials</code><br>
 <code>mimiRust.exe --dump-credentials</code>
 <br>
 
-### Dumping NTLM hashes from user accounts ###
+<h3>Dumping NTLM hashes from user accounts</h3>
 <code>mimiRust @ dump-hashes</code><br>
 <code>mimiRust.exe --dump-hashes</code>
 <br>
 
-### Executing shell commands ###
+<h3>Executing shell commands</h3>
 <code>mimiRust $ shell whoami</code>
 <br>
 
-### Spawning a process with SYSTEM ###
+<h3>Spawning a process with SYSTEM</h3>
 <code>mimiRust # spawn-path cmd.exe</code><br>
 <code>mimiRust.exe -s cmd.exe</code>
 
