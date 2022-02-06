@@ -34,6 +34,7 @@
 <p>MimiRust is a post-exploitation tool that can be used within redteam operations. Like the name suggests the entire project is made within the Rust language. MimiRust is capable of the following actions:</p>
 <ul>
   <li>Spawning any process as SYSTEM</li>
+  <li>Executing shell commands</li>
   <li>Extracting Windows passwords out of memory through the wdigest attack vector.</li>
   <li>Extracting Windows NTLM hashes from user accounts (aes / des)</li>
 </ul><br>
@@ -43,18 +44,28 @@
 </ul>
 
 <h2>Quick usage:</h2>
-<p>To get the help message for mimiRust you can either startup the program in a terminal and type the following;</p>
+<p>MimiRust can be ran in two different ways: from the command line using mimiRust.exe --help or in the shell by running the executable without any command line arguments. For help with the program type one of the following into mimiRust;</p>
 <ul>
   <li><code>mimiRust # ?</code></li>
   <li><code>mimiRust # h</code></li>
   <li><code>mimiRust # help</code></li>
 </ul>
-<p>MimiRust also allows command line interpretation through mimiRust.exe --help</p>
 
 ## Dumping plaintext credentials from memory through wdigest ##
 <code>mimiRust # dump-credentials</code>
+<code>mimiRust.exe --dump-credentials</code>
 
-<small>Note: out of some tests it turned out that it does not dump credentials with some of the above operating systems. (however on other installations of the same operating system it did.)</small><br>
+## Dumping NTLM hashes from user accounts ##
+<code>mimiRust @ dump-hashes</code>
+<code>mimiRust.exe --dump-hashes</code>
+
+## Executing shell commands ##
+<code>mimiRust $ shell whoami</code>
+
+## Spawning a process with SYSTEM ##
+<code>mimiRust # spawn-path cmd.exe</code>
+<code>mimiRust.exe -s cmd.exe</code>
+
 <br>
 <h2>Why was MimiRust made</h2>
 <p>I was bored in my first year of my CyberSecurity bachelors, as there wasn't anything cyber related being taught. Thus I decided I was going to start my own project, I already knew of Mimikatz for a while and why it was used however I did not know how it did it's thing, so to get this knowledge I decided to start learning how it does it's thing and thus mimiRust was created.</p>
