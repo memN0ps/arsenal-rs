@@ -45,13 +45,13 @@
 <h2>Quick usage:</h2>
 <p>To get the help message for mimiRust you can either startup the program in a terminal and type the following;</p>
 <ul>
-  <li>?</li>
-  <li>h</li>
-  <li>help</li>
+  <li><code>mimiRust # ?</code</li>
+  <li><code>mimiRust # h</code</li>
+  <li><code>mimiRust # help</code</li>
 </ul>
 <p>MimiRust also allows command line interpretation through mimiRust.exe --help</p>
 
-<h6>Dumping Wdigest</h6>
+<h2>Dumping Wdigest</h2>
 <code>mimiRust # dump-credentials</code>
 
 <small>Note: out of some tests it turned out that it does not dump credentials with some of the above operating systems. (however on other installations of the same operating system it did.)</small><br>
