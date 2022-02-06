@@ -42,10 +42,11 @@
   <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
 </ul>
 
-<h2>Quick usage:</h2><br><br>
-<p>All give the same help message</p>
+<h2>Quick usage:</h2>
+<p>To get the help message for mimiRust you can either startup the program in a terminal and type the following;</p>
 <code>?</code>
 <code>h</code>
+<p>or</p>
 <code>help</code>
 
 <h1>Dumping Wdigest</h1>
