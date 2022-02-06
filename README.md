@@ -45,6 +45,9 @@
   <li>Kerberos Golden Ticket</li>
 </ul>
 
+<small><bold>Maybe in the future I will make it polymorphic and obfuscate the strings and API calls.</bold></small>
+
+
 <h2>Quick usage:</h2>
 <p>MimiRust can be ran in two different ways: from the command line using mimiRust.exe --help or in the shell by running the executable without any command line arguments. For help with the program type one of the following into mimiRust;</p>
 <ul>
