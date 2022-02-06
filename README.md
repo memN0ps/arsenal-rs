@@ -52,18 +52,18 @@
 </ul>
 
 ## Dumping plaintext credentials from memory through wdigest ##
-<code>mimiRust # dump-credentials</code>
+<code>mimiRust # dump-credentials</code><br>
 <code>mimiRust.exe --dump-credentials</code>
 
 ## Dumping NTLM hashes from user accounts ##
-<code>mimiRust @ dump-hashes</code>
+<code>mimiRust @ dump-hashes</code><br>
 <code>mimiRust.exe --dump-hashes</code>
 
 ## Executing shell commands ##
 <code>mimiRust $ shell whoami</code>
 
 ## Spawning a process with SYSTEM ##
-<code>mimiRust # spawn-path cmd.exe</code>
+<code>mimiRust # spawn-path cmd.exe</code><br>
 <code>mimiRust.exe -s cmd.exe</code>
 
 <br>
