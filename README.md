@@ -42,8 +42,14 @@
   <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
 </ul>
 
-<h2>Quick usage:</h2>
-<code>test</code>
+<h2>Quick usage:</h2><br><br>
+<p>All give the same help message</p>
+<code>?</code>
+<code>h</code>
+<code>help</code>
+
+<h1>Dumping Wdigest</h1>
+<code>mimiRust # dump-credentials</code>
 
 <small>Note: out of some tests it turned out that it does not dump credentials with some of the above operating systems. (however on other installations of the same operating system it did.)</small><br>
 <br>
