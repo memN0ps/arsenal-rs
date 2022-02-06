@@ -45,7 +45,7 @@
   <li>Kerberos Golden Ticket</li>
 </ul>
 
-<small><strong>Maybe in the future I will make it polymorphic and obfuscate the strings and API calls.</strong></small>
+<small><strong>Maybe in the future I will make it polymorphic and obfuscate the strings (also polymorphic) and API calls.</strong></small>
 
 
 <h2>Quick usage:</h2>
