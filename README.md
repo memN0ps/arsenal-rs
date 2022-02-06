@@ -70,8 +70,7 @@
 <code>mimiRust.exe -s cmd.exe</code>
 
 <h2>Demo</h2>
-https://vimeo.com/673938805
-
+<img src="https://github.com/ThottySploity/mimiRust/blob/main/demo.gif" alt="mimiRust Demo" width="100%">
 
 <br>
 <h2>Author</h2>
