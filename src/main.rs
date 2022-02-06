@@ -29,7 +29,7 @@ struct Args {
     dump_hashes: bool,
 
     /// Execute a shell command through the use of cmd
-    #[clap(short, long)]
+    #[clap(long)]
     shell: Vec<String>,
 }
 
