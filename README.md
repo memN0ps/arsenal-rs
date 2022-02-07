@@ -78,6 +78,8 @@
 <small>click on the demo to get a higher resolution</small>
 <img src="https://github.com/ThottySploity/mimiRust/blob/main/demo.gif" alt="mimiRust Demo" width="100%">
 
+<br><h3>Disclaimer</h3>
+<p>I am not responsible for what you do with the information and code provided. This is intended for professional or educational purposes only.</p>
 <br>
 <h2>Author</h2>
 <h3>Why was MimiRust made</h3>
