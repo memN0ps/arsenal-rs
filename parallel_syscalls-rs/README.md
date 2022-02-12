@@ -2,10 +2,16 @@
 
 Rust version of MDSec's ParallelSyscalls research: https://github.com/mdsecactivebreach/ParallelSyscalls/ and https://www.mdsec.co.uk/2022/01/edr-parallel-asis-through-analysis/
 
-This code can be used to load a fresh copy of `ntdll.dll` using system calls.
+This code can be used to load a fresh copy of `NTDLL.dll` using system calls and extract system calls from the fresh copy of `NTDLL.dll` to call any Win32 API function of your choice. This may allow you to evade AV/EDR detections. Please note that the syscall stubs are allocated using `RWX` memory created using `VirtualAlloc()`, which is not optimal from an OPSEC perspective.
+
+
+## Why Rust?
+
+Why not? Rust is awesome! A low-level statically (compiled) and strongly typed systems programming language that is faster than C/C++, allowing you to achieve memory safety concurrency and perform low-level tasks writing high-level code with an excellent compiler, community and documentation. I have moved away from my old favourite languages C/C++/C#, and started my new Rusty adventure.
+
+This project has allowed me to learn about Rust Windows Internals and enhance my red teaming skills. I'm relatively new to Rust, but I firmly believe Rust is the future for robust programs, red teaming and malware development.
 
 ![ntdlll](./ntdll.png)
-
 
 ## Example
 
