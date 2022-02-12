@@ -7,7 +7,7 @@ This code can be used to load a fresh copy of `NTDLL.dll` using system calls and
 
 ## Why Rust?
 
-Why not? Rust is awesome! A low-level statically (compiled) and strongly typed systems programming language that is faster than C/C++, allowing you to achieve memory safety concurrency and perform low-level tasks writing high-level code with an excellent compiler, community and documentation. I have moved away from my old favourite languages C/C++/C#, and started my new Rusty adventure.
+Why not? Rust is awesome! A low-level statically (compiled) and strongly typed systems programming language that is faster than C/C++, allowing you to achieve memory safety, concurrency and perform low-level tasks writing high-level code with an excellent compiler, community and documentation. I have moved away from my old favourite languages C/C++/C#, and started my new Rusty adventure.
 
 This project has allowed me to learn about Rust Windows Internals and enhance my red teaming skills. I'm relatively new to Rust, but I firmly believe Rust is the future for robust programs, red teaming and malware development.
 
