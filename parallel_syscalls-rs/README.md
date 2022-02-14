@@ -105,6 +105,6 @@ fn main() {
 * https://github.com/kmanc/remote_code_oxidation
 * https://github.com/zorftw/kdmapper-rs
 * https://github.com/trickster0/OffensiveRust
-* https://twitter.com/rustlang - (Rust Community Discord: Nick12#9400, B3NNY#8794, MaulingMonkey#1444, Zuix#4359, WithinRafael#7014, Jess Gaming#8850 and many more)
+* https://twitter.com/rustlang - (Rust Community Discord: Nick12#9400, B3NNY#8794, MaulingMonkey#1444, Zuix#4359, WithinRafael#7014, Jess Gaming#8850, madfrog#5492 and many more)
 
 
