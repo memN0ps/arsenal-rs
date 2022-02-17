@@ -15,20 +15,26 @@ This project has allowed me to learn about Rust Windows Internals and enhance my
 
 ## Example
 
-1. Import the "parallel_syscalls" library
+1. Import the "parallel_syscalls" library using `mod parallel_syscalls;`
+
 2. Create a function pointer type such as `NtCreateThreadEx` https://docs.rs/ntapi/0.3.6/ntapi/ntpsapi/fn.NtCreateThreadEx.html
-3. Call the function `gimme_the_loot("ntdll.dll")` to load a fresh copy of NTDLL using MDSec's ParallelSyscalls technique
-4. Call the function `get_function_address(ptr_ntdll, "NtCreateThreadEx")` and pass in NTDLL's base address and the function's system call number you want to retrieve
-5. Call `VirtualAlloc` with `PAGE_EXECUTE_READWRITE` to allocate memory for the syscall stub (note that this is not optimal from an OPSEC perspective)
-6. Call `build_syscall_stub(syscall_region as *mut c_void, syscall_nt_create_thread_ex as u32)` and pass the memory region and the address of the function to copy the syscall stub inside the allocated memory region.
-7. Call `transmute::<_, NtCreateThreadEx>(nt_create_thread_ex)` to turn a pointer into a function pointer`
-8. Call the function as you would normally `syscall_nt_create_thread_ex(&mut thread_handle, GENERIC_ALL, null_mut(), GetCurrentProcess(), null_mut(), null_mut(), 0, 0, 0, 0, null_mut())`
-9. Profit \x90
+
+3. Call the function `get_module_base_address("ntdll")` to load a fresh copy of NTDLL using MDSec's Parallel Syscalls technique.
+
+4. Call the function `get_function_address(ptr_ntdll, "NtCreateThreadEx")` and pass in NTDLL's base address and the system call number of the function you want to retrieve.
+
+5. Call `build_syscall_stub(syscall_nt_create_thread_ex)` and the address of the function to allocate memory and copy the syscall stub to the allocated memory region.
+
+6. Call `transmute::<_, NtCreateThreadEx>(nt_create_thread_ex)` to turn a pointer into a function pointer`
+
+7. Call the function as you would normally `syscall_nt_create_thread_ex(&mut thread_handle, GENERIC_ALL, null_mut(), GetCurrentProcess(), null_mut(), null_mut(), 0, 0, 0, 0, null_mut())`
+
+8. Profit \x90
 
 ```rust
 use std::{ptr::null_mut, intrinsics::transmute};
 use ntapi::ntpsapi::PPS_ATTRIBUTE_LIST;
-use winapi::{um::{memoryapi::VirtualAlloc, winnt::{ACCESS_MASK, GENERIC_ALL, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE}, processthreadsapi::GetCurrentProcess}, shared::{ntdef::{PHANDLE, POBJECT_ATTRIBUTES, HANDLE, PVOID, NTSTATUS, NT_SUCCESS}, minwindef::ULONG, basetsd::SIZE_T}, ctypes::c_void};
+use winapi::{um::{winnt::{ACCESS_MASK, GENERIC_ALL}, processthreadsapi::GetCurrentProcess}, shared::{ntdef::{PHANDLE, POBJECT_ATTRIBUTES, HANDLE, PVOID, NTSTATUS, NT_SUCCESS}, minwindef::ULONG, basetsd::SIZE_T}, ctypes::c_void};
 
 mod parallel_syscalls;
 
@@ -47,12 +53,11 @@ type NtCreateThreadEx = unsafe extern "system" fn(
     AttributeList: PPS_ATTRIBUTE_LIST
 ) -> NTSTATUS;
 
-const MAX_SYSCALL_STUB_SIZE: u32 = 64;
 
 fn main() {
 
     // Dynamically get the base address of a fresh copy of ntdll.dll using mdsec's technique
-    let ptr_ntdll = parallel_syscalls::gimme_the_loot("ntdll");
+    let ptr_ntdll = parallel_syscalls::get_module_base_address("ntdll");
 
     if ptr_ntdll.is_null() {
         panic!("Pointer to ntdll is null");
@@ -61,29 +66,21 @@ fn main() {
     //get function address
     let syscall_nt_create_thread_ex = parallel_syscalls::get_function_address(ptr_ntdll, "NtCreateThreadEx");
 
-    // Allocate memory for the system call (not optimal from opsec perspective)
-    let syscall_region = unsafe { VirtualAlloc(null_mut(), MAX_SYSCALL_STUB_SIZE as usize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE) as usize };
-
-    if syscall_region == 0 {
-        panic!("Failed to allocate memory using VirtualAlloc in main");
-    }
-
-
-    let nt_create_thread_ex = unsafe { parallel_syscalls::build_syscall_stub(syscall_region as *mut c_void, syscall_nt_create_thread_ex as u32) };
+    //build system call stub
+    let nt_create_thread_ex = parallel_syscalls::build_syscall_stub(syscall_nt_create_thread_ex as u32);
     
-    // Example
-    unsafe {
-        let syscall_nt_create_thread_ex = transmute::<_, NtCreateThreadEx>(nt_create_thread_ex);
-        let mut thread_handle : *mut c_void = null_mut();
+    // Convert to function pointer
+    let syscall_nt_create_thread_ex = unsafe { transmute::<_, NtCreateThreadEx>(nt_create_thread_ex) };
+    let mut thread_handle : *mut c_void = null_mut();
 
-        let status = syscall_nt_create_thread_ex(&mut thread_handle, GENERIC_ALL, null_mut(), GetCurrentProcess(), null_mut(), null_mut(), 0, 0, 0, 0, null_mut());
+    // Call the function pointer in the memory region
+    let status = unsafe { syscall_nt_create_thread_ex(&mut thread_handle, GENERIC_ALL, null_mut(), GetCurrentProcess(), null_mut(), null_mut(), 0, 0, 0, 0, null_mut()) };
 
-        if !NT_SUCCESS(status) {
-            panic!("Failed to call NtCreateThreadEx");
-        }
-
-        println!("[+] Thread Handle: {:?} and Status: {:?}", thread_handle, status);
+    if !NT_SUCCESS(status) {
+        panic!("Failed to call NtCreateThreadEx");
     }
+
+    println!("[+] Thread Handle: {:?} and Status: {:?}", thread_handle, status);
 }
 ```
 
