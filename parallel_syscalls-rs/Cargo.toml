@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 winapi = { version = "0.3.9", features = ["processthreadsapi", "memoryapi"] }
-ntapi = "0.3.6"
+ntapi = "0.3.7"
 bstr = "0.2.17"

@@ -14,9 +14,9 @@ use winapi::{
         processthreadsapi::{GetCurrentProcess},
         handleapi::{CloseHandle},
         winnt::{IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, IMAGE_NT_SIGNATURE, PIMAGE_NT_HEADERS, 
-            PIMAGE_SECTION_HEADER, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, ACCESS_MASK, 
-            FILE_READ_DATA, FILE_SHARE_READ, SECTION_ALL_ACCESS, PAGE_READONLY, SEC_COMMIT, IMAGE_EXPORT_DIRECTORY, IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64},
-        memoryapi::{VirtualAlloc},
+            PIMAGE_SECTION_HEADER, MEM_RESERVE, MEM_COMMIT, ACCESS_MASK, 
+            FILE_READ_DATA, FILE_SHARE_READ, SECTION_ALL_ACCESS, PAGE_READONLY, SEC_COMMIT, IMAGE_EXPORT_DIRECTORY, IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64, PAGE_EXECUTE_READ, PAGE_READWRITE},
+        memoryapi::{VirtualAlloc, VirtualProtect},
     },
     shared::{
         ntdef::{NT_SUCCESS, HANDLE, PVOID, UNICODE_STRING, InitializeObjectAttributes, OBJECT_ATTRIBUTES, POBJECT_ATTRIBUTES, NTSTATUS, PHANDLE, PLARGE_INTEGER, OBJ_CASE_INSENSITIVE},
@@ -80,7 +80,7 @@ unsafe fn get_peb_address() -> PPEB {
         
     if !NT_SUCCESS(status) {
         CloseHandle(process_handle);
-        panic!("NtQueryInformationProcess: failed to retrieves information about the specified process");
+        panic!("[-] NtQueryInformationProcess: failed to retrieves information about the specified process");
     }
 
     return basic_information.PebBaseAddress;
@@ -159,7 +159,7 @@ unsafe fn get_syscalls_from_ldrp_thunk_signature(data_section_address: *const u3
     let mut syscall_ntmapviewofsection: u32 = 0;
 
     if (*data_section_address) == 0 || data_section_size < &(16 * 5) {
-        panic!(".data section base address is null or .data section size is less than 80");
+        panic!("[-] .data section base address is null or .data section size is less than 80");
     }
 
     let section_size = (data_section_size - &(16 * 5)) as isize;
@@ -184,19 +184,12 @@ unsafe fn get_syscalls_from_ldrp_thunk_signature(data_section_address: *const u3
     }
     
     if syscall_ntopenfile == 0 && syscall_ntcreatesection == 0 && syscall_ntmapviewofsection == 0 {
-        panic!("Failed to find system calls for NtOpenFile, NtCreateSection or NtMapViewOfSection");
+        panic!("[-] Failed to find system calls for NtOpenFile, NtCreateSection or NtMapViewOfSection");
     }
     
-    //Not optimal from an opsec perspective
-    let syscall_region = VirtualAlloc(null_mut(), (3 * MAX_SYSCALL_STUB_SIZE) as usize, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE) as usize;
-
-    if syscall_region == 0 {
-        panic!("Failed to allocate memory using VirtualAlloc");
-    }
-
-    let nt_open_file = build_syscall_stub(syscall_region as *mut c_void, syscall_ntopenfile);
-    let nt_create_section = build_syscall_stub((syscall_region + MAX_SYSCALL_STUB_SIZE as usize) as *mut c_void, syscall_ntcreatesection);
-    let nt_map_view_of_section = build_syscall_stub((syscall_region + (2 * MAX_SYSCALL_STUB_SIZE as usize)) as *mut c_void, syscall_ntmapviewofsection);
+    let nt_open_file = build_syscall_stub(syscall_ntopenfile);
+    let nt_create_section = build_syscall_stub(syscall_ntcreatesection);
+    let nt_map_view_of_section = build_syscall_stub(syscall_ntmapviewofsection);
 
     let system_calls = vec![nt_open_file, nt_create_section, nt_map_view_of_section];
     
@@ -204,7 +197,15 @@ unsafe fn get_syscalls_from_ldrp_thunk_signature(data_section_address: *const u3
 }
 
 /// Builds system calls for the specfied syscall number in the specfied region of memory
-pub unsafe fn build_syscall_stub(stub_region: *mut c_void, syscall_number: u32) -> *mut c_void {
+pub fn build_syscall_stub(syscall_number: u32) -> *mut c_void {
+    
+    //Not optimal from an opsec perspective
+    let stub_region = unsafe { VirtualAlloc(null_mut(), MAX_SYSCALL_STUB_SIZE as usize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE) };
+
+    if stub_region.is_null() {
+        panic!("[-] Failed to allocate memory using VirtualAlloc");
+    }
+
     let mut syscall_stub: Vec<u8> = vec![
         0x4c, 0x8b, 0xd1,               // mov r10, rcx
         0xb8, 0x00, 0x00, 0x00, 0x00,   // mov eax, xxx
@@ -214,7 +215,17 @@ pub unsafe fn build_syscall_stub(stub_region: *mut c_void, syscall_number: u32) 
 
     syscall_stub[4] = syscall_number as u8;
 
-    copy_nonoverlapping(syscall_stub.as_ptr(), stub_region as _, syscall_stub.len());
+    // Copy the syscall stub to allocated memory region
+    unsafe { copy_nonoverlapping(syscall_stub.as_ptr(), stub_region as _, syscall_stub.len()) };
+
+    let mut old_protection = unsafe { std::mem::zeroed() };
+
+    // Make new buffer as executable
+    let rv = unsafe { VirtualProtect(stub_region, syscall_stub.len(), PAGE_EXECUTE_READ, &mut old_protection) };
+
+    if rv == 0 {
+        panic!("[-] Failed to call VirtualProtect");
+    }
 
     return stub_region;
 }
@@ -252,21 +263,21 @@ unsafe fn load_ntdll_into_section(syscalls: Vec<*mut c_void>) -> *mut c_void {
 
     if !NT_SUCCESS(status) {
         close_handles(section_handle, file_handle, lp_section);
-        panic!("Failed to call NtOpenFile: {:?}", status);
+        panic!("[-] Failed to call NtOpenFile: {:?}", status);
     }
 
     let status = syscall_nt_create_section(&mut section_handle, SECTION_ALL_ACCESS, null_mut(), null_mut(), PAGE_READONLY, SEC_COMMIT, file_handle);
 
     if !NT_SUCCESS(status) {
         close_handles(section_handle, file_handle, lp_section);
-        panic!("Failed to call NtCreateSection: {:?}", status);
+        panic!("[-] Failed to call NtCreateSection: {:?}", status);
     }
     
     let status = nt_map_view_of_section(section_handle, GetCurrentProcess(), &mut lp_section as *mut _ as *mut _, 0, 0, null_mut(), &mut view_size, 1, 0, PAGE_READONLY);
     
     if !NT_SUCCESS(status) {
         close_handles(section_handle, file_handle, lp_section);
-        panic!("Failed to call NtMapViewOfSection: {:?}", status);
+        panic!("[-] Failed to call NtMapViewOfSection: {:?}", status);
     }
 
     close_handles(section_handle, file_handle, lp_section);
@@ -311,14 +322,14 @@ unsafe fn get_module_exports(module_base: *mut c_void) -> BTreeMap<String, usize
     let dos_header = *(module_base as *mut IMAGE_DOS_HEADER);
 
     if dos_header.e_magic != IMAGE_DOS_SIGNATURE {
-        panic!("Error: get_module_exports failed, DOS header is invalid");
+        panic!("[-] Error: get_module_exports failed, DOS header is invalid");
     }
     
     let nt_header =
         (module_base as usize + dos_header.e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
 
     if (*nt_header).Signature != IMAGE_NT_SIGNATURE {
-        panic!("Error: get_module_exports failed, NT header is invalid");
+        panic!("[-] Error: get_module_exports failed, NT header is invalid");
     }
 
     let export_directory = (module_base as usize
@@ -374,13 +385,13 @@ fn find_bytes(function_ptr: usize) -> usize {
 
     match syscall {
         Some(syscall_number) => return syscall_number as usize,
-        None => println!("System call number not found"),
+        None => println!("[-] System call number not found"),
     }
 
     return 0;
 }
 
-pub fn gimme_the_loot(dll_name: &str) -> *mut c_void {
+pub fn get_module_base_address(dll_name: &str) -> *mut c_void {
 
     let section_type = b".data";
 
@@ -412,7 +423,7 @@ pub fn get_function_address(ptr_ntdll: *mut c_void, function_to_call: &str) -> u
     
     //Get the names and addresses of functions in NTDLL
     for (name, addr) in unsafe { get_module_exports(ptr_ntdll) } {
-        if name.starts_with(function_to_call) {
+        if name == function_to_call {
             println!("[+] Function: {:?} Address {:#x}", name, addr);
             function_ptr = addr;
         }
