@@ -5,6 +5,9 @@ Rust version of MDSec's ParallelSyscalls research: https://github.com/mdsecactiv
 This code can be used to load a fresh copy of `NTDLL.dll` using system calls and extract system calls from the fresh copy of `NTDLL.dll` to call any Win32 API function of your choice. This may allow you to evade AV/EDR detections. Please note that the syscall stubs are allocated using `RWX` memory created using `VirtualAlloc()`, which is not optimal from an OPSEC perspective.
 
 
+Writing a tool with a blog post by self-research has learn a lot more than anything I've ever done: https://memn0ps.github.io/Parallel-Syscalls/
+
+
 ## Why Rust?
 
 Why not? Rust is awesome! A low-level statically (compiled) and strongly typed systems programming language that is faster than C/C++, allowing you to achieve memory safety, concurrency and perform low-level tasks writing high-level code with an excellent compiler, community and documentation. I have moved away from my old favourite languages C/C++/C#, and started my new Rusty adventure.
