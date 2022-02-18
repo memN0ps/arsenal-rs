@@ -4,8 +4,8 @@ pub mod privilege;
 pub mod utilities;
 
 use authentication::{
-    PtH,
-    Kerberos,
+    pth::ExecuteWMI,
+    kerberos::GoldenTicket,
 };
 
 use passwords::{
