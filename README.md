@@ -40,6 +40,7 @@
 </ul><br>
 <p>Todo:</p>
 <ul>
+  <li>Remove one dependency on powershell</li>
   <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
   <li>PtH (Pass-The-Hash)</li>
   <li>Kerberos Golden Ticket</li>

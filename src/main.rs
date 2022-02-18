@@ -1,6 +1,12 @@
+pub mod authentication;
 pub mod passwords;
 pub mod privilege;
 pub mod utilities;
+
+use authentication::{
+    PtH,
+    Kerberos,
+};
 
 use passwords::{
     wdigest::Wdigest, 
