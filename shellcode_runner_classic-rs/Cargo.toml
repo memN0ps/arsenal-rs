@@ -9,3 +9,4 @@ edition = "2018"
 sysinfo = "0.20.4"
 ntapi = "0.3.6"
 winapi = { version = "0.3.8", features = ["ntdef", "ntstatus", "impl-default", "basetsd"] }
+libaes = "0.6.1"
