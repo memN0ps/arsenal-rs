@@ -4,7 +4,7 @@
 
 I had 1 detection on Virus Total but this will change after making the project public, also don't rely 100% on virus total results.
 
-![Detection](./detection.PNG)
+![Detection](./detection.png)
 
 ## References
 
