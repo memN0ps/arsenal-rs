@@ -4,6 +4,8 @@
 
 I had 1 detection on Virus Total but this will change after making the project public, also don't rely 100% on virus total results.
 
+https://www.virustotal.com/gui/file/054783446c4e72a1d46b4cca5f57128ad55ebde1511dbdd5f40be6d497644193?nocache=1
+
 ![Detection](./detection.png)
 
 ## References
