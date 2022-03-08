@@ -42,6 +42,7 @@
 <ul>
   <li><a href="https://github.com/ThottySploity/mimiRust/blob/main/src/passwords/ntlm/powershell_command.rs">Remove one dependency on powershell</a></li>
   <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
+  <li>PSExec to create service on another endpoint.</li>
   <li>PtH (Pass-The-Hash)</li>
   <li>Kerberos Golden Ticket</li>
 </ul>

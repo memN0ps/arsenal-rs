@@ -1,7 +1,7 @@
 pub struct GoldenTicket;
 
 impl GoldenTicket {
-    pub fn new() {
-        todo!();
+    pub fn create() {
+        println!("WIP");
     }
 }
