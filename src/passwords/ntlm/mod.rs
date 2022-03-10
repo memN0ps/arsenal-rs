@@ -30,6 +30,11 @@ use std::ffi::CString;
 
 use aes::Aes128;
 
+use md5::{
+    Md5, 
+    Digest
+};
+
 use block_modes::{
     BlockMode, 
     Cbc
@@ -197,6 +202,34 @@ fn open_regkey(key: String) -> HKEY {
     }
 }
 
+fn get_bytes_with_null(input: &str) -> Vec<u8> {
+    let mut result = input.as_bytes().to_vec();
+    result.push(0);
+    result
+}
+
+fn get_enc_key(input_one: Vec<u8>, input_two: Vec<u8>, input_three: Vec<u8>, input_four: Vec<u8>) -> Vec<u8> {
+    let mut total = Vec::new();
+
+    for i in input_one {
+        total.push(i);
+    }
+
+    for i in input_two {
+        total.push(i);
+    }
+
+    for i in input_three {
+        total.push(i);
+    }
+
+    for i in input_four {
+        total.push(i);
+    }
+
+    total
+}
+
 fn read_classname(handle: HKEY) -> String {
     unsafe {
         let mut class: [i8; MAX_PATH] = std::mem::zeroed();
@@ -330,6 +363,19 @@ fn get_ntlm_hash() -> Result<Vec<Ntlm>> {
                             enc_ntlm
                         },
                         20 => {
+                            let encrypted_syskey = &f[128..144];
+                            let mut hasher = Md5::new();
+                            hasher.update(get_enc_key(
+                                f[112..128].to_vec(),
+                                get_bytes_with_null("!@#$%^&*()qwertyUIOPAzxcvbnmQQQQQQQQQQQQ)(*@&%"),
+                                bootkey.to_vec(),
+                                get_bytes_with_null("0123456789012345678901234567890123456789")
+                            ));
+                            let enc_syskey_key = hasher.finalize();
+
+                            
+
+
                             continue;
                         },
                         _ => {

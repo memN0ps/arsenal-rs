@@ -57,7 +57,7 @@
   <li><code>mimiRust # help</code></li>
 </ul>
 
-<br><h3>Dumping plaintext credentials from memory through wdigest</h3>
+<br><h3>Dumping credentials from memory through wdigest</h3>
 <code>mimiRust # dump-credentials</code><br>
 <code>mimiRust.exe --dump-credentials</code>
 <br>

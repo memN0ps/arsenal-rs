@@ -754,7 +754,7 @@ fn read_memory_bytes(handle: HANDLE, address: usize, mem_out: &mut [u8], mem_out
             handle as *mut libc::c_void,
             address as *mut core::ffi::c_void,
             mem_out.as_mut_ptr() as *mut core::ffi::c_void,
-            mem_out_len as u64,
+            mem_out_len.try_into().unwrap(),
             bytes_read,
         ) == 0 {
             return Ok(bytes_read as usize)
