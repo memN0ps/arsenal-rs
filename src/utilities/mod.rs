@@ -97,25 +97,39 @@ impl Utils {
         return false;
     }
 
-    pub fn get_user_input(perms: u32) -> Vec<String> {
+    pub fn get_user_input(addition: Option<String>) -> Vec<String> {
         let mut s = String::new();
         let mut result: Vec<String> = vec![];
-
-        match perms {
+        let perm = get_permission_status();
+    
+        match perm {
             0 => {
                 //System: @
-                print!("mimiRust @ ");
+    
+                if let Some(addition) = addition {
+                    print!("{}", format!("mimiRust::{} @ ", addition));
+                } else {
+                    print!("mimiRust @ ");
+                }
             },
             1 => {
                 //Admin: #
-                print!("mimiRust # ");
+                if let Some(addition) = addition {
+                    print!("{}", format!("mimiRust::{} # ", addition));
+                } else {
+                    print!("mimiRust # ");
+                }
             },
             _ => {
                 //User: $
-                print!("mimiRust $ ");
+                if let Some(addition) = addition {
+                    print!("{}", format!("mimiRust::{} $ ", addition));
+                } else {
+                    print!("mimiRust $ ");
+                }
             },
         };
-
+    
         let _=stdout().flush();
         stdin().read_line(&mut s).expect("Did not enter correct characters");
         if let Some('\n')=s.chars().next_back() {
@@ -128,7 +142,18 @@ impl Utils {
         for string in s.split(" ") {
             result.push(string.to_string());
         }
-
+    
         return result;
+    }
+}
+
+fn get_permission_status() -> i32 {
+    if Utils::is_elevated() {
+        if Utils::is_system() {
+            return 0;
+        }
+        return 1;
+    } else {
+        return 2;
     }
 }

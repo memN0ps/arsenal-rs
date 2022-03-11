@@ -90,6 +90,8 @@ impl Escalation {
         if format!("{}", output.status) == "exit code: 0" {
             if output.stdout.len() > 0 {
                 println!("{}", std::str::from_utf8(&output.stdout)?);
+            } else {
+                println!("No output");
             }
         } else {
             println!("{}", std::str::from_utf8(&output.stderr)?);

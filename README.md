@@ -20,15 +20,28 @@
 
     mimiRust $ ?
 
-    dump-credentials             Dumps systems credentials through Wdigest
-    dump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions)
-    spawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location
-    shell <SHELL COMMAND>        Execute a shell command through cmd, returns output
-    exit                         Exits out of mimiRust
+    Choose one of the following options:
 
+      passwords:
+              • dump-credentials             Dumps systems credentials through Wdigest.
+              • dump-hashes                  Dumps systems NTLM hashes (requires SYSTEM permissions).
+              • clear                        Clears the screen of any past output.
+              • exit                         Moves to top level menu
 
+      pivioting:
+              • shell <SHELL COMMAND>        Execute a shell command through cmd, returns output.
+              • clear                        Clears the screen of any past output.
+              • exit                         Moves to top level menu
+              • (W.I.P)psexec                Executes a service on another system.
+              • (W.I.P)pth                   Pass-the-Hash to run a command on another system.
+              • (W.I.P)golden-ticket         Creates a golden ticket for a user account with the domain.
 
-    mimiRust $
+      privilege:
+              • spawn-path <SPAWN_PATH>      Spawn program with SYSTEM permissions from location.
+              • clear                        Clears the screen of any past output.
+              • exit                         Moves to top level menu
+
+    mimiRust $ ?
 
 </code>
 <p>MimiRust is a post-exploitation tool that can be used within redteam operations. Like the name suggests the entire project is made within the Rust language. MimiRust is capable of the following actions:</p>
@@ -50,29 +63,35 @@
 
 
 <h2>Quick usage:</h2>
-<p>MimiRust can be ran in two different ways: from the command line using mimiRust.exe --help or in the shell by running the executable without any command line arguments. For help with the program type one of the following into mimiRust;</p>
+<p>MimiRust can be ran in two different ways: from the command line using mimiRust.exe --help or in the shell by running the executable without any command line arguments. For help with the program type one of the following into mimiRust:</p>
 <ul>
   <li><code>mimiRust # ?</code></li>
   <li><code>mimiRust # h</code></li>
   <li><code>mimiRust # help</code></li>
 </ul>
+<p>You will now be required to type in the module that you want to access, current modules are:</p>
+<ul>
+  <li><code>passwords</code></li>
+  <li><code>pivioting</code></li>
+  <li><code>privilege</code></li>
+</ul>
 
 <br><h3>Dumping credentials from memory through wdigest</h3>
-<code>mimiRust # dump-credentials</code><br>
+<code>mimiRust::passwords # dump-credentials</code><br>
 <code>mimiRust.exe --dump-credentials</code>
 <br>
 
 <br><h3>Dumping NTLM hashes from user accounts</h3>
-<code>mimiRust @ dump-hashes</code><br>
+<code>mimiRust::passwords @ dump-hashes</code><br>
 <code>mimiRust.exe --dump-hashes</code>
 <br>
 
 <br><h3>Executing shell commands</h3>
-<code>mimiRust $ shell whoami</code>
+<code>mimiRust::pivioting $ shell whoami</code>
 <br>
 
 <br><h3>Spawning a process with SYSTEM</h3>
-<code>mimiRust # spawn-path cmd.exe</code><br>
+<code>mimiRust::privilege # spawn-path cmd.exe</code><br>
 <code>mimiRust.exe -s cmd.exe</code>
 
 <h2>Demo</h2>
