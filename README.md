@@ -37,10 +37,10 @@
   <li>Executing shell commands</li>
   <li>Extracting Windows passwords out of memory through the wdigest attack vector.</li>
   <li>Extracting Windows NTLM hashes from user accounts (aes / des)</li>
+  <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
 </ul><br>
 <p>Todo:</p>
 <ul>
-  <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
   <li>PSExec to create service on another endpoint.</li>
   <li>PtH (Pass-The-Hash)</li>
   <li>Kerberos Golden Ticket</li>

