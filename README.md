@@ -50,8 +50,7 @@
   <li>Spawning any process as SYSTEM</li>
   <li>Executing shell commands</li>
   <li>Extracting Windows passwords out of memory through the wdigest attack vector.</li>
-  <li>Extracting Windows NTLM hashes from user accounts (aes / des)</li>
-  <li>Extracting Windows NTLM hashes from user accounts (md5 / rc4)</li>
+  <li>Extracting Windows NTLM hashes from user accounts (aes / des) & (md5 / rc4)</li>
 </ul><br>
 <p>Todo:</p>
 <ul>
