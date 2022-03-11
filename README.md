@@ -41,7 +41,8 @@
               • clear                        Clears the screen of any past output.
               • exit                         Moves to top level menu
 
-    mimiRust $ ?
+    mimiRust $ passwords
+    mimiRust::passwords $ dump-credentials
 
 </code>
 <p>MimiRust is a post-exploitation tool that can be used within redteam operations. Like the name suggests the entire project is made within the Rust language. MimiRust is capable of the following actions:</p>
