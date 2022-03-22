@@ -57,6 +57,7 @@
   <li>PSExec to create service on another endpoint.</li>
   <li>PtH (Pass-The-Hash)</li>
   <li>Kerberos Golden Ticket</li>
+  <li>lsa patch to get NTLM hashes from LSASS (Local Security Authority Subsystem Service)</li>
 </ul>
 
 <small><strong>Maybe in the future I will make it polymorphic and obfuscate the strings (also polymorphic) and API calls.</strong></small>

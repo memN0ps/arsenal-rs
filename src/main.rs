@@ -146,7 +146,28 @@ fn handle_user_input(args: Vec<String>) -> Result<()> {
                         main()?;
                     },
                     "psexec" => {
-                        PSExec::new();
+                        let config = match input.len() {
+                            3 => {
+                                let config = PSExec::new(input[1].clone(), input[2].clone(), None, None);
+                                config
+                            },
+                            4 => {
+                                let config = PSExec::new(input[1].clone(), input[2].clone(), Some(input[3].clone()), None);
+                                config
+                            },
+                            5 => {
+                                let config = PSExec::new(input[1].clone(), input[2].clone(), Some(input[3].clone()), Some(input[4].clone()));
+                                config
+                            },
+                            _ => {
+                                println!("[*] PSExec workes as follows: psexec <computername> <binary_path> <optional: service name> <optional: serivce display name>");
+                                std::process::exit(0x100);  
+                            },
+                        };
+
+                        if PSExec::execute(config.clone()) {
+                            println!("[+] Executed: {} on: {} with servicename: {} and description: {}", config.binary_path, config.computer_name, config.service_name, config.display_name);
+                        }
                     },
                     "pth" => {
                         ExecuteWMI::new();
