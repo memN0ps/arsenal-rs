@@ -59,9 +59,7 @@
   <li>Kerberos Golden Ticket</li>
   <li>lsa patch to get NTLM hashes from LSASS (Local Security Authority Subsystem Service)</li>
 </ul>
-
-<small><strong>Maybe in the future I will make it polymorphic and obfuscate the strings (also polymorphic) and API calls.</strong></small>
-
+<small><strong>Maybe in the future I will make API calls obfuscated and strings polymorphic</strong></small>
 
 <h2>Quick usage:</h2>
 <p>MimiRust can be ran in two different ways: from the command line using mimiRust.exe --help or in the shell by running the executable without any command line arguments. For help with the program type one of the following into mimiRust:</p>
