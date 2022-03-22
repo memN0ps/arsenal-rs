@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-winapi = { version = "0.3", features = ["bcrypt", "winnt", "minwindef", "ntdef", "libloaderapi", "psapi", "securitybaseapi", "tlhelp32", "processthreadsapi", "handleapi"] }
+winapi = { version = "0.3", features = ["bcrypt", "winnt", "minwindef", "ntdef", "libloaderapi", "psapi", "securitybaseapi", "tlhelp32", "processthreadsapi", "handleapi", "winsvc"] }
 winreg = "0.10.1"
 kernel32-sys = "0.2.2"
 memsec = "0.6.0"
