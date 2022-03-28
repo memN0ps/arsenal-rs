@@ -1,12 +1,6 @@
 # Portable Executable Injection (PE Injection)
 
-
-```c
-typedef struct _IMAGE_BASE_RELOCATION {
-    ULONG  VirtualAddress;
-    ULONG  SizeOfBlock;
-} IMAGE_BASE_RELOCATION, *PIMAGE_BASE_RELOCATION;
-```
+Simple PE Injection.
 
 
 ## References
