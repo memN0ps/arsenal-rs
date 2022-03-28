@@ -2,6 +2,12 @@
 
 Simple PE Injection.
 
+## Usage
+
+```
+pe_injection-rs.exe --process notepad.exe
+```
+
 
 ## References
 
