@@ -1,0 +1,15 @@
+[package]
+name = "manual_map-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "manual_map"
+crate-type = ["cdylib"]
+
+[dependencies]
+winapi = { version = "0.3.9", features = ["processthreadsapi", "memoryapi", "winbase", "impl-default", "errhandlingapi", "handleapi", "winuser", "heapapi", "impl-default"] }
+sysinfo = "0.20.4"
+clap = { version = "3.1.6", features = ["derive"] }

@@ -180,11 +180,11 @@ fn entry_point() {
 }
 
 
-/// Portable executable injector (PE injector) / Reflective DLL injector
+/// Portable executable injector (PE injector)
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Target process to inject PE or DLL
+    /// Target process to inject PE
     #[clap(short, long)]
     process: String,
 }
