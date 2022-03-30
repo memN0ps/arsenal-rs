@@ -5,7 +5,7 @@ Simple Manual Map Injector.
 ## Usage
 
 ```
-manual_map-rs.exe --process notepad.exe --dll .\target\debug\manual_map.dll
+manual_map-rs.exe --process <process> --dll <dll>
 ```
 
 

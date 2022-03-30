@@ -1,4 +1,4 @@
-use std::{ptr::{null_mut}, intrinsics::{copy_nonoverlapping, transmute}, ffi::c_void};
+use std::{ptr::{null_mut}, intrinsics::{copy_nonoverlapping, transmute}, ffi::c_void, io};
 use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_THUNK_DATA64, PIMAGE_IMPORT_BY_NAME, PIMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, synchapi::WaitForSingleObject, handleapi::CloseHandle}, shared::minwindef::FALSE};
 
 
@@ -7,7 +7,7 @@ pub fn manual_map(dll_bytes: &[u8], process_id: u32) {
     println!("[+] _IMAGE_DOS_HEADER: {:p} _IMAGE_NT_HEADERS64: {:p}", dos_header, nt_headers);
 
     let local_image = copy_sections_to_local_process(nt_headers, dll_bytes.as_ptr());
-    println!("Local allocated memory region: {:p}", local_image.as_ptr());
+    println!("[+] Local allocated memory region: {:p}", local_image.as_ptr());
 
     let process_handle = unsafe { 
         OpenProcess(
@@ -34,11 +34,10 @@ pub fn manual_map(dll_bytes: &[u8], process_id: u32) {
     };
 
     if remote_image == null_mut() {
-        error("Failed to allocate memory in the target process for PE file");
+        error("Failed to allocate memory in the target process for dll");
     }
     
-    println!("[+] Remote allocated memory region: {:p}", remote_image);
-
+    println!("[+] Remote allocated memory region for the dll: {:p}", remote_image);
 
     unsafe { rebase_image(nt_headers, local_image.as_ptr(), remote_image) };
     unsafe { resolve_imports(nt_headers, local_image.as_ptr()) };
@@ -54,11 +53,14 @@ pub fn manual_map(dll_bytes: &[u8], process_id: u32) {
     };
 
     if wpm_result == 0 {
-        error("Failed to write loader code to the target process");
+        error("Failed to write the local image to the target process");
     }
 
     let entry_point = unsafe { remote_image as usize + (*nt_headers).OptionalHeader.AddressOfEntryPoint as usize };
-    
+
+    println!("Entry Point: {:#x}", entry_point);
+    pause();
+
     unsafe { call_entrypoint(remote_image as usize, entry_point, process_handle) };
 
     unsafe { CloseHandle(process_handle) };
@@ -67,7 +69,7 @@ pub fn manual_map(dll_bytes: &[u8], process_id: u32) {
 unsafe fn call_entrypoint(image_base: usize, entrypoint: usize, process_handle: *mut c_void) {
     
     #[rustfmt::skip]
-    let mut shellcode = vec![
+    let mut shellcode: Vec<u8> = vec![
         0x48, 0x83, 0xEC, 0x28,                                     // sub rsp, 28h
         0x48, 0xB9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rcx, image_base  ; hinstDLL
         0x48, 0xc7, 0xc2, 0x01, 0x00, 0x00, 0x00,                   // mov rdx, 1           ; fdwReason
@@ -106,6 +108,8 @@ unsafe fn call_entrypoint(image_base: usize, entrypoint: usize, process_handle: 
     if wpm_result == 0 {
         error("Failed to write shellcode to the target process");
     }
+
+    pause();
 
     let thread_handle = CreateRemoteThread(
         process_handle,
@@ -176,8 +180,9 @@ unsafe fn rebase_image(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u8, 
             let offset = item.offset(i as isize).read() & 0xFFF;
 
             if type_field == IMAGE_REL_BASED_DIR64 {
-                let mut relocate_me = *((address + offset as isize) as *mut isize);
-                relocate_me = delta + relocate_me;
+                //let mut relocate_me = *((address + offset as isize) as *mut isize);
+                //relocate_me = delta + relocate_me;
+                *((address + offset as isize) as *mut isize) += delta;
             }
         }
 
@@ -199,11 +204,13 @@ fn copy_sections_to_local_process(nt_headers: PIMAGE_NT_HEADERS64, dll_bytes: *c
 
     for i in unsafe { 0..(*nt_headers).FileHeader.NumberOfSections } {
         let section_header_i = unsafe { &*(section_header.add(i as usize)) };
+        //println!("Section: {:p}", section_header_i);
         
         let destination = unsafe { image.as_mut_ptr().offset(section_header_i.VirtualAddress as isize) };
         let source = dll_bytes as usize + section_header_i.PointerToRawData as usize;
         let size = section_header_i.SizeOfRawData as usize;
 
+        //println!("[+] Section source: {:#x} and Section destination: {:#p}", source, destination);
         // copy section headers into the local process
         unsafe { 
             copy_nonoverlapping(
@@ -241,4 +248,21 @@ fn get_image_nt_and_dos_headers(image_base: *const u8) -> (PIMAGE_DOS_HEADER, PI
 // Panic and print GetLastError
 fn error(text: &str){
     panic!("[-] {} {}", text, unsafe { GetLastError()});
+}
+
+#[allow(dead_code)]
+// Gets user input from the terminal
+fn get_input() -> io::Result<()> {
+    let mut buf = String::new();
+    std::io::stdin().read_line(&mut buf)?;
+    Ok(())
+}
+
+#[allow(dead_code)]
+// Used for debugging
+fn pause() {
+    match get_input() {
+        Ok(buffer) => println!("{:?}", buffer),
+        Err(error) => println!("error: {}", error),
+    };
 }
