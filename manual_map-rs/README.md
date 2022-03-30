@@ -17,6 +17,7 @@ manual_map-rs.exe --process notepad.exe --dll .\target\debug\manual_map.dll
 * https://andreafortuna.org/2018/09/24/some-thoughts-about-pe-injection/
 * https://blog.sevagas.com/PE-injection-explained
 * http://www.rohitab.com/discuss/topic/41441-pe-injection-new/
+* https://github.com/not-matthias/mmap/
 * https://github.com/Kudaes/DInvoke_rs/
 * https://github.com/zorftw/kdmapper-rs/
 * https://github.com/stephenfewer/ReflectiveDLLInjection/
