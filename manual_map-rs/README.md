@@ -18,7 +18,7 @@ Simple Manual Map Injector aka Manual Mapping a DLL
 * https://github.com/zorftw/kdmapper-rs/
 * https://github.com/stephenfewer/ReflectiveDLLInjection/
 * https://github.com/Zer0Mem0ry/ManualMap
-* https://github.com/memN0ps/mmap-loader-rs
+* https://github.com/MrElectrify/mmap-loader-rs/
 * https://github.com/seal9055/darksouls3_cheats
 * https://guidedhacking.com/threads/manual-mapping-dll-injection-tutorial-how-to-manual-map.10009/
 * https://0xrick.github.io/win-internals/pe7/#relocations
