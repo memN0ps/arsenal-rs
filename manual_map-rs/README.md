@@ -1,16 +1,11 @@
 # Manual Map DLL Injector
 
-Simple Manual Map Injector.
-
-## Usage
-
-```
-manual_map-rs.exe --process <process> --dll <dll>
-```
+Simple Manual Map Injector aka Manual Mapping a DLL
 
 
 ## References
 
+* https://github.com/Ben-Lichtman (B3NNY)
 * https://www.ired.team/offensive-security/code-injection-process-injection/pe-injection-executing-pes-inside-remote-processes
 * https://www.ired.team/offensive-security/code-injection-process-injection/process-hollowing-and-pe-image-relocations
 * https://www.ired.team/offensive-security/code-injection-process-injection/reflective-dll-injection
@@ -18,6 +13,7 @@ manual_map-rs.exe --process <process> --dll <dll>
 * https://blog.sevagas.com/PE-injection-explained
 * http://www.rohitab.com/discuss/topic/41441-pe-injection-new/
 * https://github.com/not-matthias/mmap/
+* https://github.com/2vg/blackcat-rs/
 * https://github.com/Kudaes/DInvoke_rs/
 * https://github.com/zorftw/kdmapper-rs/
 * https://github.com/stephenfewer/ReflectiveDLLInjection/

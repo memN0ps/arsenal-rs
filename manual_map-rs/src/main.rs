@@ -1,29 +1,9 @@
 use sysinfo::{Pid, SystemExt, ProcessExt};
-use clap::Parser;
-
-/* 
-/// Manual Mapping Library
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
-struct Args {
-    /// Target process to inject PE
-    #[clap(short, long)]
-    process: String,
-
-    /// Path to the dll to inject
-    #[clap(short, long)]
-    dll: String,
-}*/
-
 mod lib;
 
 fn main() {
     let dll_bytes = include_bytes!("C:\\Users\\User\\Documents\\GitHub\\arsenal-rs\\example\\target\\debug\\example.dll");
     let process_id = get_process_id_by_name("notepad.exe") as u32;
-    //let args = Args::parse();
-
-    //let dll_path = args.dll;
-    //let process_id = get_process_id_by_name(args.process.as_str());
     println!("Process ID: {:}", process_id);
 
     lib::manual_map(dll_bytes, process_id);

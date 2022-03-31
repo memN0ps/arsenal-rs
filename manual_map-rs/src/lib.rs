@@ -1,5 +1,5 @@
-use std::{ptr::{null_mut}, intrinsics::{copy_nonoverlapping, transmute}, ffi::c_void, io};
-use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_THUNK_DATA64, PIMAGE_IMPORT_BY_NAME, PIMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, synchapi::WaitForSingleObject, handleapi::CloseHandle}, shared::minwindef::FALSE};
+use std::{ptr::{null_mut}, intrinsics::{copy_nonoverlapping, transmute}, ffi::c_void, io, mem::size_of};
+use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_IMPORT_DESCRIPTOR, IMAGE_THUNK_DATA64, IMAGE_SNAP_BY_ORDINAL64, IMAGE_ORDINAL64, IMAGE_IMPORT_BY_NAME, IMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, synchapi::WaitForSingleObject, handleapi::CloseHandle}, shared::minwindef::FALSE};
 
 
 pub fn manual_map(dll_bytes: &[u8], process_id: u32) {
@@ -59,7 +59,6 @@ pub fn manual_map(dll_bytes: &[u8], process_id: u32) {
     let entry_point = unsafe { remote_image as usize + (*nt_headers).OptionalHeader.AddressOfEntryPoint as usize };
 
     println!("Entry Point: {:#x}", entry_point);
-    pause();
 
     unsafe { call_entrypoint(remote_image as usize, entry_point, process_handle) };
 
@@ -109,8 +108,6 @@ unsafe fn call_entrypoint(image_base: usize, entrypoint: usize, process_handle: 
         error("Failed to write shellcode to the target process");
     }
 
-    pause();
-
     let thread_handle = CreateRemoteThread(
         process_handle,
         null_mut(),
@@ -130,32 +127,37 @@ unsafe fn call_entrypoint(image_base: usize, entrypoint: usize, process_handle: 
 
 // Resolve the local image imports
 unsafe fn resolve_imports(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u8) {
-     // Resolve imports
-     let mut current_import_descriptor = (local_image as usize + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize].VirtualAddress as usize) as PIMAGE_IMPORT_DESCRIPTOR;
 
-     while (*current_import_descriptor).FirstThunk != 0 {
-         //let name = CStr::from_ptr((executable_image as usize + (*current_import_descriptor).Name as usize) as *const i8).to_str().expect("Couldn't convert to str").to_string();
-         let dll_name = (local_image as usize + (*current_import_descriptor).Name as usize) as *const i8;
-         let dll_handle = LoadLibraryA(dll_name);
- 
-         //let mut current_first_thunk = (executable_image as usize + (*current_import_descriptor).FirstThunk as usize) as PIMAGE_THUNK_DATA64;
+     let mut import_dir = (local_image as usize + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize].VirtualAddress as usize) as PIMAGE_IMPORT_DESCRIPTOR;
+
+     while (*import_dir).Name != 0x00 {
          
-         let mut current_original_first_thunk = (local_image as usize + *(*current_import_descriptor).u.OriginalFirstThunk() as usize) as PIMAGE_THUNK_DATA64;
- 
-         while (*(*current_original_first_thunk).u1.Function()) != 0 {
-             let thunk_data = (local_image as usize + *(*current_original_first_thunk).u1.AddressOfData() as usize) as PIMAGE_IMPORT_BY_NAME;
-             
-             //let function_name = CStr::from_ptr((*thunk_data).Name.as_ptr()).to_str().expect("couldn't convert to str").to_string();
-             let function_name = (*thunk_data).Name.as_ptr();
+         let lib_name = (local_image as usize + (*import_dir).Name as usize) as *const i8;
+         let lib = LoadLibraryA(lib_name);
 
-             GetProcAddress(dll_handle, function_name);
-             //let function_address = (*current_first_thunk).u1.Function_mut() as *mut u64 as usize;
-             current_original_first_thunk = (current_original_first_thunk as usize + std::mem::size_of::<PIMAGE_THUNK_DATA64>()) as PIMAGE_THUNK_DATA64;
-             //current_first_thunk = (current_first_thunk as usize + std::mem::size_of::<PIMAGE_THUNK_DATA64>()) as PIMAGE_THUNK_DATA64;
-         }
+         let mut orig_thunk = if *(*import_dir).u.OriginalFirstThunk() != 0 {
+            (local_image as usize + *(*import_dir).u.OriginalFirstThunk() as usize) as *mut IMAGE_THUNK_DATA64
+        } else {
+            (local_image as usize + (*import_dir).FirstThunk as usize) as *mut IMAGE_THUNK_DATA64
+        };         
+
+        let mut thunk = (local_image as usize + (*import_dir).FirstThunk as usize) as *mut IMAGE_THUNK_DATA64;
  
-         current_import_descriptor = (current_import_descriptor as usize + std::mem::size_of::<PIMAGE_IMPORT_DESCRIPTOR>()) as PIMAGE_IMPORT_DESCRIPTOR;
+         while (*orig_thunk).u1.Function() != &0x00 {
+            if IMAGE_SNAP_BY_ORDINAL64(*(*orig_thunk).u1.Ordinal()) {
+                let fn_ordinal = IMAGE_ORDINAL64(*(*orig_thunk).u1.Ordinal()) as _;
+                *(*thunk).u1.Function_mut() = GetProcAddress(lib, fn_ordinal) as _;
+            } else {
+                let fn_name = (local_image as usize + *(*orig_thunk).u1.AddressOfData() as usize) as *mut IMAGE_IMPORT_BY_NAME;
+                *(*thunk).u1.Function_mut() = GetProcAddress(lib, &(*fn_name).Name[0] as *const _ as *mut _) as _;
+            }
+            thunk = thunk.offset(1);
+            orig_thunk = orig_thunk.offset(1);
+         }
+
+         import_dir = (import_dir as u64 + size_of::<IMAGE_IMPORT_DESCRIPTOR>() as u64) as _;
      }
+
 }
 
 // Rebase the local image
