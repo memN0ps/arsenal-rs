@@ -1,8 +1,8 @@
 use std::{ptr::{null_mut}, intrinsics::{copy_nonoverlapping, transmute}, ffi::c_void, io, mem::size_of};
-use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_IMPORT_DESCRIPTOR, IMAGE_THUNK_DATA64, IMAGE_SNAP_BY_ORDINAL64, IMAGE_ORDINAL64, IMAGE_IMPORT_BY_NAME, IMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, synchapi::WaitForSingleObject, handleapi::CloseHandle}, shared::minwindef::FALSE};
+use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_IMPORT_DESCRIPTOR, IMAGE_THUNK_DATA64, IMAGE_SNAP_BY_ORDINAL64, IMAGE_ORDINAL64, IMAGE_IMPORT_BY_NAME, IMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, handleapi::CloseHandle}, shared::minwindef::FALSE};
 
-
-pub fn manual_map(dll_bytes: &[u8], process_id: u32) {
+/// Manually Maps a DLL in the target process
+pub fn manual_map(dll_bytes: Vec<u8>, process_id: u32) {
     let (dos_header, nt_headers) = get_image_nt_and_dos_headers(dll_bytes.as_ptr());
     println!("[+] _IMAGE_DOS_HEADER: {:p} _IMAGE_NT_HEADERS64: {:p}", dos_header, nt_headers);
 
@@ -58,14 +58,15 @@ pub fn manual_map(dll_bytes: &[u8], process_id: u32) {
 
     let entry_point = unsafe { remote_image as usize + (*nt_headers).OptionalHeader.AddressOfEntryPoint as usize };
 
-    println!("Entry Point: {:#x}", entry_point);
+    println!("[+] Entry Point: {:#x}", entry_point);
 
-    unsafe { call_entrypoint(remote_image as usize, entry_point, process_handle) };
+    unsafe { call_dllmain(remote_image as usize, entry_point, process_handle) };
 
     unsafe { CloseHandle(process_handle) };
 }
 
-unsafe fn call_entrypoint(image_base: usize, entrypoint: usize, process_handle: *mut c_void) {
+// Allocates memory, inject shellcode in the target process and call DllMain
+unsafe fn call_dllmain(image_base: usize, entrypoint: usize, process_handle: *mut c_void) {
     
     #[rustfmt::skip]
     let mut shellcode: Vec<u8> = vec![
@@ -122,10 +123,11 @@ unsafe fn call_entrypoint(image_base: usize, entrypoint: usize, process_handle: 
         error("Failed to create remote thread");
     }
 
-    WaitForSingleObject(thread_handle, 0xFFFFFFFF);
+    CloseHandle(thread_handle);
+    //WaitForSingleObject(thread_handle, 0xFFFFFFFF);
 }
 
-// Resolve the local image imports
+/// Resolve the image imports
 unsafe fn resolve_imports(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u8) {
 
      let mut import_dir = (local_image as usize + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize].VirtualAddress as usize) as PIMAGE_IMPORT_DESCRIPTOR;
@@ -160,17 +162,12 @@ unsafe fn resolve_imports(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u
 
 }
 
-// Rebase the local image
+/// Rebase the image / perform image base relocation
 unsafe fn rebase_image(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u8, remote_image: *mut c_void) {
     
     let mut current_base_relocation = transmute::<usize, PIMAGE_BASE_RELOCATION>(local_image as usize + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC as usize].VirtualAddress as usize);
     let relocation_end = current_base_relocation as usize + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC as usize].Size as usize;
     let delta = remote_image as isize - (*nt_headers).OptionalHeader.ImageBase as isize;
-
-    //delete later
-    if delta == 0 {
-        println!("[*] No rebasing necessary");
-    }
     
     while (*current_base_relocation).VirtualAddress != 0u32 && (*current_base_relocation).VirtualAddress as usize <= relocation_end && (*current_base_relocation).SizeOfBlock != 0u32 {
         let address = (local_image as usize + (*current_base_relocation).VirtualAddress as usize) as isize;
@@ -192,7 +189,7 @@ unsafe fn rebase_image(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u8, 
     }
 }
 
-// Copy sections of the dll to the target process
+/// Copy sections of the dll to a memory location in local process (heap)
 fn copy_sections_to_local_process(nt_headers: PIMAGE_NT_HEADERS64, dll_bytes: *const u8) -> Vec<u8> {
     
     let image_size = unsafe { (*nt_headers).OptionalHeader.SizeOfImage } as usize ;
@@ -226,7 +223,7 @@ fn copy_sections_to_local_process(nt_headers: PIMAGE_NT_HEADERS64, dll_bytes: *c
     image
 }
 
-// Get IMAGE_NT_HEADERS of the image base address
+/// Get IMAGE_NT_HEADERS of the provided image
 fn get_image_nt_and_dos_headers(image_base: *const u8) -> (PIMAGE_DOS_HEADER, PIMAGE_NT_HEADERS64) {
     unsafe {
         let dos_header = transmute::<_, PIMAGE_DOS_HEADER>(image_base);
@@ -247,13 +244,13 @@ fn get_image_nt_and_dos_headers(image_base: *const u8) -> (PIMAGE_DOS_HEADER, PI
     }
 }
 
-// Panic and print GetLastError
+/// Panic and print GetLastError
 fn error(text: &str){
     panic!("[-] {} {}", text, unsafe { GetLastError()});
 }
 
 #[allow(dead_code)]
-// Gets user input from the terminal
+/// Gets user input from the terminal
 fn get_input() -> io::Result<()> {
     let mut buf = String::new();
     std::io::stdin().read_line(&mut buf)?;
@@ -261,8 +258,8 @@ fn get_input() -> io::Result<()> {
 }
 
 #[allow(dead_code)]
-// Used for debugging
-fn pause() {
+/// Used for debugging
+pub fn pause() {
     match get_input() {
         Ok(buffer) => println!("{:?}", buffer),
         Err(error) => println!("error: {}", error),

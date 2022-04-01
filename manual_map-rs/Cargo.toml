@@ -12,3 +12,5 @@ name = "manual_map"
 winapi = { version = "0.3.9", features = ["processthreadsapi", "memoryapi", "winbase", "impl-default", "errhandlingapi", "handleapi", "winuser", "heapapi", "impl-default"] }
 sysinfo = "0.20.4"
 clap = { version = "3.1.6", features = ["derive"] }
+ureq = "2.4.0"
+anyhow = "1.0.56"

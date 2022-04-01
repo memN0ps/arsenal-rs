@@ -2,6 +2,11 @@
 
 Simple Manual Map Injector aka Manual Mapping a DLL
 
+## USAGE
+```
+manual_map-rs.exe --process <PROCESS> --url <URL>
+```
+
 
 ## References
 
