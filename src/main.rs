@@ -1,17 +1,17 @@
-pub mod lateral_movement;
 pub mod passwords;
+pub mod pivioting;
 pub mod privilege;
 pub mod utilities;
-
-use lateral_movement::{
-    kerberos::GoldenTicket,
-    pth::ExecuteWMI,
-    scm::PSExec,
-};
 
 use passwords::{
     ntlm::Ntlm,
     wdigest::Wdigest, 
+};
+
+use pivioting::{
+    kerberos::GoldenTicket,
+    pth::ExecuteWMI,
+    scm::PSExec,
 };
 
 use privilege::Escalation;
