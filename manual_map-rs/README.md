@@ -7,6 +7,15 @@ Simple Manual Map Injector aka Manual Mapping a DLL
 manual_map-rs.exe --process <PROCESS> --url <URL>
 ```
 
+## Features
+
+* Manual Mappping in Remote process
+* Manual Mappping x64 DLLs
+* Rebasing image and resolving imports in the local process
+* Download DLL remotely (HTTP supported and HTTPS ToDo)
+* Manual Mappping in local process (ToDo)
+* Manual Mappping in an executable file (ToDo)
+* TLS callbacks (ToDo)
 
 ## References
 
