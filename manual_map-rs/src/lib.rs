@@ -154,15 +154,11 @@ unsafe fn resolve_imports(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u
         // Load the DLL in the in the address space of the process
         let dll_handle = LoadLibraryA(dll_name);
         
-        let mut original_first_thunk = if *(*import_directory).u.OriginalFirstThunk() != 0 {
-            // Get a pointer to the OriginalFirstThunk in the current _IMAGE_IMPORT_DESCRIPTOR
-            (local_image as usize + *(*import_directory).u.OriginalFirstThunk() as usize) as PIMAGE_THUNK_DATA64
-        } else {
-            // Get a pointer to the FirstThunk in the current _IMAGE_IMPORT_DESCRIPTOR
-            (local_image as usize + (*import_directory).FirstThunk as usize) as PIMAGE_THUNK_DATA64
-        };
+        // Get a pointer to the OriginalFirstThunk in the current _IMAGE_IMPORT_DESCRIPTOR
+        let mut original_first_thunk = (local_image as usize 
+            + *(*import_directory).u.OriginalFirstThunk() as usize) as PIMAGE_THUNK_DATA64;
 
-        // Get a pointer to the first Thunk in the OriginalFirstThunk
+        // Get a pointer to the FirstThunk in the current _IMAGE_IMPORT_DESCRIPTOR
         let mut thunk = (local_image as usize 
             + (*import_directory).FirstThunk as usize) 
             as PIMAGE_THUNK_DATA64;
