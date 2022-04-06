@@ -1,5 +1,5 @@
 use std::{ptr::{null_mut}, intrinsics::{copy_nonoverlapping, transmute}, ffi::c_void, io, mem::size_of};
-use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_IMPORT_DESCRIPTOR, PIMAGE_IMPORT_BY_NAME, IMAGE_SNAP_BY_ORDINAL64, IMAGE_ORDINAL64, PIMAGE_THUNK_DATA64, IMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, handleapi::CloseHandle}, shared::minwindef::FALSE};
+use winapi::{um::{processthreadsapi::{OpenProcess, CreateRemoteThread}, winnt::{PROCESS_ALL_ACCESS, MEM_RESERVE, MEM_COMMIT, PAGE_EXECUTE_READWRITE, PIMAGE_NT_HEADERS64, PIMAGE_SECTION_HEADER, IMAGE_NT_SIGNATURE, IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, PIMAGE_BASE_RELOCATION, IMAGE_DIRECTORY_ENTRY_BASERELOC, IMAGE_BASE_RELOCATION, IMAGE_REL_BASED_DIR64, IMAGE_DIRECTORY_ENTRY_IMPORT, PIMAGE_IMPORT_DESCRIPTOR, PIMAGE_IMPORT_BY_NAME, IMAGE_SNAP_BY_ORDINAL64, IMAGE_ORDINAL64, PIMAGE_THUNK_DATA64, IMAGE_IMPORT_DESCRIPTOR}, errhandlingapi::GetLastError, memoryapi::{VirtualAllocEx, WriteProcessMemory}, libloaderapi::{LoadLibraryA, GetProcAddress}, handleapi::CloseHandle}};
 
 /// Manually Maps a DLL in the target process
 pub fn manual_map(dll_bytes: Vec<u8>, process_id: u32) {
@@ -13,7 +13,7 @@ pub fn manual_map(dll_bytes: Vec<u8>, process_id: u32) {
     let process_handle = unsafe { 
         OpenProcess(
             PROCESS_ALL_ACCESS,
-            FALSE,
+            0,
             process_id
         )
     };
@@ -141,9 +141,8 @@ unsafe fn call_dllmain(image_base: usize, entrypoint: usize, process_handle: *mu
 unsafe fn resolve_imports(nt_headers: PIMAGE_NT_HEADERS64, local_image: *const u8) {
 
     // Get a pointer to the first _IMAGE_IMPORT_DESCRIPTOR
-    let mut import_directory = (local_image as usize 
-        + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize].VirtualAddress as usize) 
-        as PIMAGE_IMPORT_DESCRIPTOR;
+    let mut import_directory = transmute::<_, PIMAGE_IMPORT_DESCRIPTOR>(local_image as usize 
+        + (*nt_headers).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT as usize].VirtualAddress as usize);
 
     while (*import_directory).Name != 0 {
         
