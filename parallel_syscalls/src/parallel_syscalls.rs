@@ -325,54 +325,77 @@ unsafe fn get_module_exports(module_base: *mut c_void) -> BTreeMap<String, usize
         panic!("[-] Error: get_module_exports failed, DOS header is invalid");
     }
     
-    let nt_header =
-        (module_base as usize + dos_header.e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
+    let nt_header = (module_base as usize + dos_header.e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
 
     if (*nt_header).Signature != IMAGE_NT_SIGNATURE {
         panic!("[-] Error: get_module_exports failed, NT header is invalid");
     }
 
-    let export_directory = (module_base as usize
-        + (*nt_header).OptionalHeader.DataDirectory
-            [IMAGE_DIRECTORY_ENTRY_EXPORT as usize]
-            .VirtualAddress as usize)
-        as *mut IMAGE_EXPORT_DIRECTORY;
-
+    let export_directory = rva_to_file_offset_pointer(module_base as usize, 
+        (*nt_header).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT as usize].VirtualAddress as u32) as *mut IMAGE_EXPORT_DIRECTORY;
+    
     let names = core::slice::from_raw_parts(
-        (module_base as usize + (*export_directory).AddressOfNames as usize)
-            as *const u32,
+        rva_to_file_offset_pointer(module_base as usize, (*export_directory).AddressOfNames) as *const u32,
         (*export_directory).NumberOfNames as _,
     );
     
     let functions = core::slice::from_raw_parts(
-        (module_base as usize + (*export_directory).AddressOfFunctions as usize)
-            as *const u32,
+        rva_to_file_offset_pointer(module_base as usize, (*export_directory).AddressOfFunctions) as *const u32,
         (*export_directory).NumberOfFunctions as _,
     );
     
     let ordinals = core::slice::from_raw_parts(
-        (module_base as usize + (*export_directory).AddressOfNameOrdinals as usize)
-            as *const u16,
+        rva_to_file_offset_pointer(module_base as usize, (*export_directory).AddressOfNameOrdinals) as *const u16,
         (*export_directory).NumberOfNames as _,
     );
 
     println!("[+] Module Base: {:?} Export Directory: {:?} AddressOfNames: {names:p}, AddressOfFunctions: {functions:p}, AddressOfNameOrdinals: {ordinals:p} ", module_base, export_directory);
+    println!("Number of Names: {:?}", (*export_directory).NumberOfNames);
 
     for i in 0..(*export_directory).NumberOfNames {
-        
-        let name = (module_base as usize + names[i as usize] as usize) as *const c_char;
+
+        let name = rva_to_file_offset_pointer(module_base as usize, names[i as usize]) as *const i8;
 
         if let Ok(name) = CStr::from_ptr(name).to_str() {
             
             let ordinal = ordinals[i as usize] as usize;
 
             exports.insert(
-                name.to_string(),
-                module_base as usize + functions[ordinal] as usize,
+                name.to_string(), 
+                rva_to_file_offset_pointer(module_base as usize, functions[ordinal])
             );
         }
     }  
     exports
+}
+
+unsafe fn rva_to_file_offset_pointer(module_base: usize, mut rva: u32) -> usize {
+    let dos_header = module_base as PIMAGE_DOS_HEADER;
+
+    let nt_headers = (module_base as usize + (*dos_header).e_lfanew as usize) as PIMAGE_NT_HEADERS;
+
+    let ref_nt_headers = &*nt_headers;
+
+    let section_header = ((&ref_nt_headers.OptionalHeader as *const _ as usize) 
+        + (ref_nt_headers.FileHeader.SizeOfOptionalHeader as usize)) as PIMAGE_SECTION_HEADER;
+
+    let number_of_sections = (*nt_headers).FileHeader.NumberOfSections;
+    
+    for i in 0..number_of_sections as usize {
+
+        let virt_address = (*section_header.add(i)).VirtualAddress;
+        let virt_size = (*section_header.add(i)).Misc.VirtualSize();
+        
+        if virt_address <= rva && virt_address + virt_size > rva {
+
+            rva -= (*section_header.add(i)).VirtualAddress;
+            rva += (*section_header.add(i)).PointerToRawData;
+            
+            return module_base + rva as usize;
+        }
+    }
+
+    return 0;
 }
 
 /// Extracts the system call number from the specfied function pointer
