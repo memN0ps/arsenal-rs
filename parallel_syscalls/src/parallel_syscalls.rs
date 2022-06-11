@@ -2,7 +2,6 @@ use std::{
     str,
     ptr::{null_mut, copy_nonoverlapping},
     ffi::CStr, collections::BTreeMap,
-    os::raw::c_char,
 };
 
 use bstr::ByteSlice;
