@@ -95,9 +95,11 @@ unsafe fn get_module_by_name(module_name: &str) -> PVOID  {
     let mut module_list = transmute::<*mut _, PLDR_DATA_TABLE_ENTRY>((*ptr_peb_ldr_data).InLoadOrderModuleList.Flink);
 
     while !(*module_list).DllBase.is_null() {
-        let dll_name = (*module_list).BaseDllName.Buffer;
-
-        if is_equal(dll_name, module_name.len(), module_name) {
+        
+        let slice = core::slice::from_raw_parts((*module_list).BaseDllName.Buffer, (*module_list).BaseDllName.Length as usize / 2);
+        let dll_name = String::from_utf16(slice).unwrap();
+        
+        if dll_name.to_uppercase() == module_name.to_uppercase() {
             dll_base = (*module_list).DllBase;
             break;
         }
@@ -289,13 +291,6 @@ unsafe fn close_handles(section_handle: HANDLE, file_handle: HANDLE, lp_section:
     CloseHandle(section_handle);
     CloseHandle(file_handle);
     CloseHandle(lp_section);
-}
-
-/// Compares a UNICODE_STRING (*mut 16) with a slice and returns true if equal
-fn is_equal(pointer: *mut u16, length: usize, against: &str) -> bool {
-    // Create slice not including the null-terminator
-    let slice = unsafe { std::slice::from_raw_parts(pointer, length - 1) };
-    slice.iter().zip(against.encode_utf16()).all(|(a, b)| *a == b)
 }
 
 /// Gets user input from the terminal

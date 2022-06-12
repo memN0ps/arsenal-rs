@@ -23,7 +23,7 @@ type NtCreateThreadEx = unsafe extern "system" fn(
 fn main() {
 
     // Dynamically get the base address of a fresh copy of ntdll.dll using mdsec's technique
-    let ptr_ntdll = parallel_syscalls::get_module_base_address("ntdll");
+    let ptr_ntdll = parallel_syscalls::get_module_base_address("ntdll.dll");
 
     if ptr_ntdll.is_null() {
         panic!("Pointer to ntdll is null");
