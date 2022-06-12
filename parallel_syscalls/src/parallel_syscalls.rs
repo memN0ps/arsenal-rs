@@ -232,14 +232,13 @@ pub fn build_syscall_stub(syscall_number: u32) -> *mut c_void {
 }
 
 
-/// Loads a unhooked fresh copy of NTDLL into the current process
-unsafe fn load_ntdll_into_section(syscalls: Vec<*mut c_void>) -> *mut c_void {
+/// Loads a unhooked fresh copy of a DLL into the current process
+unsafe fn load_dll_into_section(syscalls: Vec<*mut c_void>, dll_path: &str) -> *mut c_void {
     let mut file_name: UNICODE_STRING = zeroed::<UNICODE_STRING>();
-    let ntdll_path = "\\??\\C:\\Windows\\System32\\ntdll.dll";
 
-    let mut unicode_ntdll_path: Vec<_> =  ntdll_path.encode_utf16().collect();
-    unicode_ntdll_path.push(0x0);
-    RtlInitUnicodeString(&mut file_name, unicode_ntdll_path.as_ptr());
+    let mut unicode_dll_path: Vec<_> =  dll_path.encode_utf16().collect();
+    unicode_dll_path.push(0x0);
+    RtlInitUnicodeString(&mut file_name, unicode_dll_path.as_ptr());
 
     let mut object_attributes: OBJECT_ATTRIBUTES = zeroed::<OBJECT_ATTRIBUTES>();
 
@@ -410,29 +409,39 @@ fn find_bytes(function_ptr: usize) -> usize {
 
 pub fn get_module_base_address(dll_name: &str) -> *mut c_void {
 
+    let syscalls_memory_regions = get_3_magical_syscall_memory_region_for_loading_dll();
+    
+    // Load an unhooked fresh copy of a dll from disk using the system calls from LdrpThunkSignature
+    let dll_path = "\\??\\C:\\Windows\\System32\\".to_owned();
+    let dll = dll_path + dll_name;
+    
+    let ptr_dll = unsafe { load_dll_into_section(syscalls_memory_regions, dll.as_str()) };
+    println!("[+] Pointer to the fresh copy of the specified DLL: {:?}", ptr_dll);
+
+    return ptr_dll;
+}
+
+pub fn get_3_magical_syscall_memory_region_for_loading_dll() -> Vec<*mut c_void> {
+
     let section_type = b".data";
 
     // Get NTDLL's base address for the current process
-    let module_base = unsafe { get_module_by_name(dll_name) };
-    println!("[+] Module Base Address: {:?}", module_base);
+    let ntdll_module_base = unsafe { get_module_by_name("ntdll.dll") };
+    println!("[+] Module Base Address: {:?}", ntdll_module_base);
 
     // Get NT Headers for NTDLL
-    let nt_headers =  unsafe { get_nt_headers(module_base) };
-    println!("[+] NT Headers Base Address: {:?}", nt_headers);
+    let ntdll_nt_headers =  unsafe { get_nt_headers(ntdll_module_base) };
+    println!("[+] NT Headers Base Address: {:?}", ntdll_nt_headers);
 
     // Get the .data section for NTDLL
-    let (section_base, section_size) = unsafe { get_sections_header(module_base, nt_headers, section_type) };
-    println!("[+] Section Header Base Address: {:?} Section Size: {:?}", section_base as *mut c_void, section_size);
+    let (ntdll_section_base, ntdll_section_size) = unsafe { get_sections_header(ntdll_module_base, ntdll_nt_headers, section_type) };
+    println!("[+] Section Header Base Address: {:?} Section Size: {:?}", ntdll_section_base as *mut c_void, ntdll_section_size);
 
-    // Get the system calls for NtOpenFile, NtCreateSection, NtMapViewOfSection from LdrpThunkSignature
-    let syscalls_memory_regions = unsafe { get_syscalls_from_ldrp_thunk_signature(section_base, section_size) } ;
+    // Get the system calls for NtOpenFile, NtCreateSection, NtMapViewOfSection from LdrpThunkSignature from the .data section of NTDLL
+    let syscalls_memory_regions = unsafe { get_syscalls_from_ldrp_thunk_signature(ntdll_section_base, ntdll_section_size) } ;
     println!("\n[+] System call stub memory region: {:?}\n", syscalls_memory_regions);
     
-    // Load an unhooked fresh copy of NTDLL from disk using the system calls from LdrpThunkSignature
-    let ptr_ntdll = unsafe { load_ntdll_into_section(syscalls_memory_regions) };
-    println!("[+] Pointer to Fresh Copy of NTDLL: {:?}" , ptr_ntdll);
-
-    return ptr_ntdll;
+    return syscalls_memory_regions;
 }
 
 pub fn get_function_address(ptr_ntdll: *mut c_void, function_to_call: &str) -> usize {
