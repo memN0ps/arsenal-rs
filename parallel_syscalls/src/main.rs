@@ -30,17 +30,17 @@ fn main() {
     }
 
     //get function address
-    let syscall_nt_create_thread_ex = parallel_syscalls::get_function_address(ptr_ntdll, "NtCreateThreadEx");
+    let nt_create_thread_ex_address = parallel_syscalls::get_function_address(ptr_ntdll, "NtCreateThreadEx");
 
     //build system call stub
-    let nt_create_thread_ex = parallel_syscalls::build_syscall_stub(syscall_nt_create_thread_ex as u32);
+    //let nt_create_thread_ex = parallel_syscalls::build_syscall_stub(syscall_nt_create_thread_ex as u32);
     
     // Convert to function pointer
-    let syscall_nt_create_thread_ex = unsafe { transmute::<_, NtCreateThreadEx>(nt_create_thread_ex) };
+    let nt_create_thread_ex = unsafe { transmute::<_, NtCreateThreadEx>(nt_create_thread_ex_address) };
     let mut thread_handle : *mut c_void = null_mut();
 
     // Call the function pointer in the memory region
-    let status = unsafe { syscall_nt_create_thread_ex(&mut thread_handle, GENERIC_ALL, null_mut(), GetCurrentProcess(), null_mut(), null_mut(), 0, 0, 0, 0, null_mut()) };
+    let status = unsafe { nt_create_thread_ex(&mut thread_handle, GENERIC_ALL, null_mut(), GetCurrentProcess(), null_mut(), null_mut(), 0, 0, 0, 0, null_mut()) };
 
     if !NT_SUCCESS(status) {
         panic!("Failed to call NtCreateThreadEx");

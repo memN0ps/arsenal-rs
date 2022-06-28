@@ -14,7 +14,7 @@ use winapi::{
         handleapi::{CloseHandle},
         winnt::{IMAGE_DOS_SIGNATURE, PIMAGE_DOS_HEADER, IMAGE_NT_SIGNATURE, PIMAGE_NT_HEADERS, 
             PIMAGE_SECTION_HEADER, MEM_RESERVE, MEM_COMMIT, ACCESS_MASK, 
-            FILE_READ_DATA, FILE_SHARE_READ, SECTION_ALL_ACCESS, PAGE_READONLY, SEC_COMMIT, IMAGE_EXPORT_DIRECTORY, IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64, PAGE_EXECUTE_READ, PAGE_READWRITE},
+            FILE_READ_DATA, FILE_SHARE_READ, SECTION_ALL_ACCESS, PAGE_READONLY, IMAGE_EXPORT_DIRECTORY, IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_DOS_HEADER, IMAGE_NT_HEADERS64, PAGE_EXECUTE_READ, PAGE_READWRITE, SEC_IMAGE},
         memoryapi::{VirtualAlloc, VirtualProtect},
     },
     shared::{
@@ -28,7 +28,7 @@ use ntapi::{
     ntpsapi::{PROCESS_BASIC_INFORMATION, NtQueryInformationProcess, PPEB_LDR_DATA},
     ntpebteb::{PPEB},
     ntldr::{PLDR_DATA_TABLE_ENTRY},
-    ntrtl::RtlInitUnicodeString, ntioapi::{IO_STATUS_BLOCK, PIO_STATUS_BLOCK}, ntmmapi::SECTION_INHERIT,
+    ntrtl::RtlInitUnicodeString, ntioapi::{IO_STATUS_BLOCK, PIO_STATUS_BLOCK}, ntmmapi::{SECTION_INHERIT, ViewShare},
 };
 
 
@@ -266,14 +266,14 @@ unsafe fn load_dll_into_section(syscalls: Vec<*mut c_void>, dll_path: &str) -> *
         panic!("[-] Failed to call NtOpenFile: {:?}", status);
     }
 
-    let status = syscall_nt_create_section(&mut section_handle, SECTION_ALL_ACCESS, null_mut(), null_mut(), PAGE_READONLY, SEC_COMMIT, file_handle);
+    let status = syscall_nt_create_section(&mut section_handle, SECTION_ALL_ACCESS, null_mut(), null_mut(), PAGE_READONLY, SEC_IMAGE, file_handle);
 
     if !NT_SUCCESS(status) {
         close_handles(section_handle, file_handle, lp_section);
         panic!("[-] Failed to call NtCreateSection: {:?}", status);
     }
     
-    let status = nt_map_view_of_section(section_handle, GetCurrentProcess(), &mut lp_section as *mut _ as *mut _, 0, 0, null_mut(), &mut view_size, 1, 0, PAGE_READONLY);
+    let status = nt_map_view_of_section(section_handle, GetCurrentProcess(), &mut lp_section as *mut _ as *mut _, 0, 0, null_mut(), &mut view_size, ViewShare, 0, PAGE_EXECUTE_READ);
     
     if !NT_SUCCESS(status) {
         close_handles(section_handle, file_handle, lp_section);
@@ -309,6 +309,58 @@ fn pause() {
 }
 */
 
+/// Retrieves all function and addresses from the specfied modules
+unsafe fn get_module_exports(module_base: *mut c_void) -> BTreeMap<String, usize> {
+    let mut exports = BTreeMap::new();
+    let dos_header = *(module_base as *mut IMAGE_DOS_HEADER);
+
+    let nt_header =
+        (module_base as usize + dos_header.e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
+
+    let export_directory = (module_base as usize
+        + (*nt_header).OptionalHeader.DataDirectory
+            [IMAGE_DIRECTORY_ENTRY_EXPORT as usize]
+            .VirtualAddress as usize)
+        as *mut IMAGE_EXPORT_DIRECTORY;
+
+    let names = core::slice::from_raw_parts(
+        (module_base as usize + (*export_directory).AddressOfNames as usize)
+            as *const u32,
+        (*export_directory).NumberOfNames as _,
+    );
+    
+    let functions = core::slice::from_raw_parts(
+        (module_base as usize + (*export_directory).AddressOfFunctions as usize)
+            as *const u32,
+        (*export_directory).NumberOfFunctions as _,
+    );
+    
+    let ordinals = core::slice::from_raw_parts(
+        (module_base as usize + (*export_directory).AddressOfNameOrdinals as usize)
+            as *const u16,
+        (*export_directory).NumberOfNames as _,
+    );
+
+    //log::info!("[+] Module Base: {:?} Export Directory: {:?} AddressOfNames: {names:p}, AddressOfFunctions: {functions:p}, AddressOfNameOrdinals: {ordinals:p} ", module_base, export_directory);
+
+    for i in 0..(*export_directory).NumberOfNames {
+        
+        let name = (module_base as usize + names[i as usize] as usize) as *const i8;
+
+        if let Ok(name) = CStr::from_ptr(name).to_str() {
+            
+            let ordinal = ordinals[i as usize] as usize;
+
+            exports.insert(
+                name.to_string(),
+                module_base as usize + functions[ordinal] as usize,
+            );
+        }
+    }  
+    return exports;
+}
+
+/*
 /// Retrieves all function and addresses from the specfied modules
 unsafe fn get_module_exports(module_base: *mut c_void) -> BTreeMap<String, usize> {
     let mut exports = BTreeMap::new();
@@ -361,7 +413,9 @@ unsafe fn get_module_exports(module_base: *mut c_void) -> BTreeMap<String, usize
     }  
     exports
 }
+*/
 
+/* 
 unsafe fn rva_to_file_offset_pointer(module_base: usize, mut rva: u32) -> usize {
     let dos_header = module_base as PIMAGE_DOS_HEADER;
 
@@ -389,7 +443,7 @@ unsafe fn rva_to_file_offset_pointer(module_base: usize, mut rva: u32) -> usize 
     }
 
     return 0;
-}
+}*/
 
 /// Extracts the system call number from the specfied function pointer
 fn find_bytes(function_ptr: usize) -> usize {    
@@ -444,7 +498,8 @@ pub fn get_3_magical_syscall_memory_region_for_loading_dll() -> Vec<*mut c_void>
     return syscalls_memory_regions;
 }
 
-pub fn get_function_address(ptr_ntdll: *mut c_void, function_to_call: &str) -> usize {
+#[allow(dead_code)]
+pub fn get_function_address_with_syscall_bytes(ptr_ntdll: *mut c_void, function_to_call: &str) -> usize {
     let mut function_ptr = 0;
     
     //Get the names and addresses of functions in NTDLL
@@ -457,7 +512,23 @@ pub fn get_function_address(ptr_ntdll: *mut c_void, function_to_call: &str) -> u
 
     // Get syscalls from the unhooked fresh copy of NTDLL
     let system_call_number = find_bytes(function_ptr);
-    println!("[+] Syscall Number: {:#x}", system_call_number);
+    //println!("[+] Syscall Number: {:#x}", system_call_number);
 
     return system_call_number;
+}
+
+pub fn get_function_address(ptr_ntdll: *mut c_void, function_to_call: &str) -> usize {
+    let mut function_ptr = 0;
+    
+    //Get the names and addresses of functions in NTDLL
+    for (name, addr) in unsafe { get_module_exports(ptr_ntdll) } {
+        if name == function_to_call {
+            println!("name: {:?}", name);
+            println!("[+] Function: {:?} Address {:#x}", name, addr);
+            function_ptr = addr;
+        }
+    }
+
+
+    return function_ptr;
 }
