@@ -42,7 +42,7 @@ This project has allowed me to learn about Rust Windows Internals and enhance my
 * https://crates.io/crates/ntapi
 * https://crates.io/crates/winapi
 * https://crates.io/crates/bstr
-* https://twitter.com/MrUn1k0d3r (MrUn1k0d3r's Discord community)
+* https://twitter.com/MrUn1k0d3r (MrUn1k0d3r's Discord community / Waldo-IRC)
 * https://github.com/felix-rs/ntcall-rs/
 * https://github.com/Kudaes/DInvoke_rs
 * https://github.com/kmanc/remote_code_oxidation
