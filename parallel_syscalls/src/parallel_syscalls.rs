@@ -6,7 +6,7 @@ use std::{
 
 use bstr::ByteSlice;
 
-use std::mem::{size_of, zeroed, transmute};
+use std::mem::{zeroed, transmute};
 
 use winapi::{
     um::{
@@ -25,7 +25,7 @@ use winapi::{
 };
 
 use ntapi::{
-    ntpsapi::{PROCESS_BASIC_INFORMATION, NtQueryInformationProcess, PPEB_LDR_DATA},
+    ntpsapi::{PPEB_LDR_DATA},
     ntpebteb::{PPEB},
     ntldr::{PLDR_DATA_TABLE_ENTRY},
     ntrtl::RtlInitUnicodeString, ntioapi::{IO_STATUS_BLOCK, PIO_STATUS_BLOCK}, ntmmapi::{SECTION_INHERIT, ViewShare},
@@ -66,8 +66,9 @@ type NtMapViewOfSection = unsafe extern "system" fn(
 
 //For VirtualAlloc
 const MAX_SYSCALL_STUB_SIZE: u32 = 64;
+const PEBOFFSET: u64 = 0x60;
 
-
+/* 
 /// Gets the Process Environment Block Address (PEB)
 unsafe fn get_peb_address() -> PPEB {
     let mut basic_information: PROCESS_BASIC_INFORMATION = zeroed();
@@ -84,10 +85,27 @@ unsafe fn get_peb_address() -> PPEB {
 
     return basic_information.PebBaseAddress;
 }
+*/
+
+// credits: felix-rs
+/// Gets the Process Environment Block Address (PEB)
+#[inline(always)]
+pub fn __readgsqword(offset: u64) -> u64 {
+    let out: u64;
+
+    unsafe {
+        std::arch::asm!("mov {}, gs:[{}]",
+        out(reg) out, in(reg) offset
+        );
+    }
+
+    out
+}
 
 /// Retrieves the specified module from the local process
 unsafe fn get_module_by_name(module_name: &str) -> PVOID  {
-    let peb_ptr: PPEB = get_peb_address();
+    //let peb_ptr: PPEB = get_peb_address();
+    let peb_ptr = __readgsqword(PEBOFFSET) as PPEB;
     
     let mut dll_base = null_mut();
     
