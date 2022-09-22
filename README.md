@@ -50,24 +50,15 @@ What if all functions are hooked? Well, then we won't be able to get the system 
 
 In a nutshell:
 
-`Hell's Gate:` Parses `ntdll.dll` to find the starting of the syscall stub (`4c8bd1b8`) and then retrieve the syscall ID. However, if the syscall stub is hooked then our code will break.
-
-```asm
-mov r10, rcx
-mov eax, <syscall>
-```
+`Hell's Gate:` This will parse `ntdll.dll` to find the starting of the syscall stub (`4c8bd1b8`) and then retrieve the syscall ID. However, if the syscall stub is hooked then our code will break.
 
 `Halo's Gate:` The same as Hell’s Gate, but adds an additional check to see if the first hooks are in place by checking if the first byte is `e9` (`jmp`) and if there is a hook in place then Halo's gate starts to look at the neighboring functions and adjust the calculations accordingly to get our system call number since the syscall ID in the syscall stub follows each other incrementally.
 
-```asm
-jmp <edr address>
-```
+`Tartarus' Gate`: The same Halo's Gate but adds an additional check to see if the syscall stub is hooked on the second line, after the assembly instructions `mov r10, rcx` by searching the following sequence of bytes: `4c8bd1e9.
 
-`Tartarus' Gate`: The same Halo's Gate but adds an additional check to see if the `mov eax, <syscall>` (`b8`) is hooked instead of just `mov r10, rcx` (`4c8bd1`).
+`FreshyCalls:` This will search functions starting with `Nt` in the `Export Directory` and sorts them by addresses and the lowest address is the syscall identifier `0`.
 
-`FreshyCalls:` Search the functions beginning with `Nt` in the `Export Directory` and sorts them by addresses. The lowest address is the syscall identifier `0`.
-
-`Syswhispers2:` Same as FreshyCalls, but search for “Zw” functions in the Export Directory and store the name by replacing `Zw` with `Nt`.
+`Syswhispers2:` The same as `FreshyCalls`, but this will search for `Zw` functions in the `Export Directory` and store the name by replacing `Zw` with `Nt`.
 
 
 Exercise for the reader by: [Alice Climent-Pommeret](https://alice.climent-pommeret.red/posts/direct-syscalls-hells-halos-syswhispers2/)
