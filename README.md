@@ -55,6 +55,27 @@ However, if all functions are hooked then we can find the first one and unhook a
 
 ## FreshyCalls / SysWhispers1 / SysWhispers2 / SysWhispers3
 
+The `FreshyCalls` technique searches the `Export Directory` for functions starting with `Nt` (excluding `Ntdll`) and sorts them by addresses. Surprisingly the lowest address is syscall number 0 and the next one will be syscall numbers 1 and 2 and 3... You can verify this in x64 dbg or Windbg yourself.
+
+Syswhispers2 does the same thing but instead of searching for the `Nt` functions inside the export directory of  `ntdll.dll` it searches for functions starting with `Zw`. Surprisingly `Zw` functions and `Nt` functions point to the same syscall stubs and will have the same system call number.
+
+Here we can verify that:
+![syswhisper2](./syswhisper2_example1.PNG)
+
+![syswhisper2](./syswhisper2_example2.PNG)
+
+
+The difference between `Zw` anmd `Nt` functions are explained by [Microsoft here](https://learn.microsoft.com/en-us/windows-hardware/drivers/kernel/using-nt-and-zw-versions-of-the-native-system-services-routines):
+
+"*The Windows native operating system services API is implemented as a set of routines that run in kernel mode. These routines have names that begin with the prefix Nt or Zw. Kernel-mode drivers can call these routines directly. User-mode applications can access these routines by using system calls.
+
+With a few exceptions, each native system services routine has two slightly different versions that have similar names but different prefixes. For example, calls to NtCreateFile and ZwCreateFile perform similar operations and are, in fact, serviced by the same kernel-mode system routine.
+
+For system calls from user mode, the Nt and Zw versions of a routine behave identically. For calls from a kernel-mode driver, the Nt and Zw versions of a routine differ in how they handle the parameter values that the caller passes to the routine.
+
+A kernel-mode driver calls the Zw version of a native system services routine to inform the routine that the parameters come from a trusted, kernel-mode source. In this case, the routine assumes that it can safely use the parameters without first validating them. However, if the parameters might be from either a user-mode source or a kernel-mode source, the driver instead calls the Nt version of the routine, which determines, based on the history of the calling thread, whether the parameters originated in user mode or kernel mode*"
+
+
 ## In a nutshell:
 
 `Hell's Gate:` This will parse `ntdll.dll` to find the starting of the syscall stub (`4c8bd1b8`) and then retrieve the syscall ID. However, if the syscall stub is hooked then our code will break.
