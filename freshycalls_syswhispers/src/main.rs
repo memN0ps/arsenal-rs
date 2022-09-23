@@ -18,13 +18,13 @@ fn main() {
     log::debug!("[+] NTDLL Address: {:p}", ntdll_base_address);
 
     let syscall_no =
-        freshycalls_syswhispers2(ntdll_base_address, dbj2_hash("NtOpenProcess".as_bytes()))
-            .expect("Failed to call syswhispers2");
+        freshycalls_syswhispers(ntdll_base_address, dbj2_hash("NtOpenProcess".as_bytes()))
+            .expect("Failed to call freshycalls/syswhispers");
 
     log::debug!("[+] System Call Number: {:#x}", syscall_no);
 }
 
-fn freshycalls_syswhispers2(module_base: *mut u8, module_hash: u32) -> Option<u16> {
+fn freshycalls_syswhispers(module_base: *mut u8, module_hash: u32) -> Option<u16> {
     let mut nt_exports = BTreeMap::new();
 
     for (name, addr) in unsafe { get_exports_by_name(module_base) } {
