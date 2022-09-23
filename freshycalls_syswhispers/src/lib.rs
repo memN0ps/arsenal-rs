@@ -10,6 +10,70 @@ use windows_sys::Win32::System::{
     },
 };
 
+const NTDLL_HASH: u32 = 0x1edab0ed;
+const NT_OPEN_PROCESS_HASH: u32 = 0x4b82f718;
+const NT_ALLOCATE_VIRTUAL_MEMORY: u32 = 0xf783b8ec;
+const NT_PROTECT_VIRTUAL_MEMORY: u32 = 0x50e92888;
+const NT_WRITE_VIRTUAL_MEMORY: u32 = 0xc3170192;
+const NT_CREATE_THREAD_EX: u32 = 0xaf18cfb0;
+
+// Do unit testing
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        env_logger::init();
+
+        let ntdll_base_address = unsafe {
+            get_loaded_module_by_hash(NTDLL_HASH).expect("Failed to get loaded module by name")
+        };
+
+        log::debug!("[+] NTDLL Address: {:p}", ntdll_base_address);
+
+        let nt_open_process_syscall =
+            freshycalls_syswhispers(ntdll_base_address, NT_OPEN_PROCESS_HASH)
+                .expect("Failed to call freshycalls/syswhispers");
+        let nt_allocate_virtual_memory_syscall =
+            freshycalls_syswhispers(ntdll_base_address, NT_ALLOCATE_VIRTUAL_MEMORY)
+                .expect("Failed to call freshycalls/syswhispers");
+        let nt_protect_virtual_memory_syscall =
+            freshycalls_syswhispers(ntdll_base_address, NT_PROTECT_VIRTUAL_MEMORY)
+                .expect("Failed to call freshycalls/syswhispers");
+        let nt_write_virtual_memory_syscall =
+            freshycalls_syswhispers(ntdll_base_address, NT_WRITE_VIRTUAL_MEMORY)
+                .expect("Failed to call freshycalls/syswhispers");
+        let nt_create_thread_ex_syscall =
+            freshycalls_syswhispers(ntdll_base_address, NT_CREATE_THREAD_EX)
+                .expect("Failed to call freshycalls/syswhispers");
+
+        log::debug!("[+] NtOpenProcess Syscall: {:#x}", nt_open_process_syscall);
+        log::debug!(
+            "[+] NtAllocateVirtualMemory Syscall: {:#x}",
+            nt_allocate_virtual_memory_syscall
+        );
+        log::debug!(
+            "[+] NtProtectVirtualMemory Syscall: {:#x}",
+            nt_protect_virtual_memory_syscall
+        );
+        log::debug!(
+            "[+] NtWriteVirtualMemory Syscall: {:#x}",
+            nt_write_virtual_memory_syscall
+        );
+        log::debug!("[+] NtCreateThreadEx: {:#x}", nt_create_thread_ex_syscall);
+
+        // Tested on Microsoft Windows 10 Home  10.0.19044 N/A Build 19044 (Unit test will fail in other build versions if syscalls IDs are different)
+        assert_eq!(nt_open_process_syscall, 0x26);
+        assert_eq!(nt_allocate_virtual_memory_syscall, 0x18);
+        assert_eq!(nt_protect_virtual_memory_syscall, 0x50);
+        assert_eq!(nt_write_virtual_memory_syscall, 0x3a);
+        assert_eq!(nt_create_thread_ex_syscall, 0xc1);
+
+        //assert_eq!(nt_create_thread_ex_syscall, 0x1337); // testing fail test
+    }
+}
+
 pub fn freshycalls_syswhispers(module_base: *mut u8, module_hash: u32) -> Option<u16> {
     let mut nt_exports = BTreeMap::new();
 
@@ -233,69 +297,4 @@ pub fn is_wow64() -> bool {
     }
 
     return true;
-}
-
-// Do unit testing
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::freshycalls_syswhispers;
-
-    const NTDLL_HASH: u32 = 0x1edab0ed;
-    const NT_OPEN_PROCESS_HASH: u32 = 0x4b82f718;
-    const NT_ALLOCATE_VIRTUAL_MEMORY: u32 = 0xf783b8ec;
-    const NT_PROTECT_VIRTUAL_MEMORY: u32 = 0x50e92888;
-    const NT_WRITE_VIRTUAL_MEMORY: u32 = 0xc3170192;
-    const NT_CREATE_THREAD_EX: u32 = 0xaf18cfb0;
-
-    #[test]
-    fn it_works() {
-        env_logger::init();
-
-        let ntdll_base_address = unsafe {
-            get_loaded_module_by_hash(NTDLL_HASH).expect("Failed to get loaded module by name")
-        };
-
-        log::debug!("[+] NTDLL Address: {:p}", ntdll_base_address);
-
-        let nt_open_process_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_OPEN_PROCESS_HASH)
-                .expect("Failed to call freshycalls/syswhispers");
-        let nt_allocate_virtual_memory_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_ALLOCATE_VIRTUAL_MEMORY)
-                .expect("Failed to call freshycalls/syswhispers");
-        let nt_protect_virtual_memory_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_PROTECT_VIRTUAL_MEMORY)
-                .expect("Failed to call freshycalls/syswhispers");
-        let nt_write_virtual_memory_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_WRITE_VIRTUAL_MEMORY)
-                .expect("Failed to call freshycalls/syswhispers");
-        let nt_create_thread_ex_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_CREATE_THREAD_EX)
-                .expect("Failed to call freshycalls/syswhispers");
-
-        log::debug!("[+] NtOpenProcess Syscall: {:#x}", nt_open_process_syscall);
-        log::debug!(
-            "[+] NtAllocateVirtualMemory Syscall: {:#x}",
-            nt_allocate_virtual_memory_syscall
-        );
-        log::debug!(
-            "[+] NtProtectVirtualMemory Syscall: {:#x}",
-            nt_protect_virtual_memory_syscall
-        );
-        log::debug!(
-            "[+] NtWriteVirtualMemory Syscall: {:#x}",
-            nt_write_virtual_memory_syscall
-        );
-        log::debug!("[+] NtCreateThreadEx: {:#x}", nt_create_thread_ex_syscall);
-
-        // Tested on Microsoft Windows 10 Home  10.0.19044 N/A Build 19044 (Unit test will fail in other build versions if syscalls IDs are different)
-        assert_eq!(nt_open_process_syscall, 0x26);
-        assert_eq!(nt_allocate_virtual_memory_syscall, 0x18);
-        assert_eq!(nt_protect_virtual_memory_syscall, 0x50);
-        assert_eq!(nt_write_virtual_memory_syscall, 0x3a);
-        assert_eq!(nt_create_thread_ex_syscall, 0xc1);
-
-        //assert_eq!(nt_create_thread_ex_syscall, 0x1337); // testing fail test
-    }
 }
