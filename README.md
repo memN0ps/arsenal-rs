@@ -8,7 +8,7 @@ I named this project `Mordor` because Hell's Gate / Halo's Gate / Tartarus' Gate
 
 ## TODO (Development in progress)
 
-* Make it user more friendly
+* Make it more user friendly
 * Add usage to README.md
 * Add System call / assembly macros
 * Decide on if I want to keep it a library or something that generates output files like SysWhispers1, SysWhispers2, SysWhispers3
