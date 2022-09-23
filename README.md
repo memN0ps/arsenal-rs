@@ -1,4 +1,4 @@
-# Hell's Gate / Halo's Gate / Tartarus' Gate / FreshyCalls / SysWhispers1 / SysWhispers2 / SysWhispers3 in Rust
+# Hell's Gate / Halo's Gate / Tartarus' Gate and FreshyCalls / SysWhispers2 in Rust
 
 I named this project `Mordor` because Hell's Gate / Halo's Gate / Tartarus' Gate remind me of the [Black Gate of Mordor](https://shadowofwar.fandom.com/wiki/Black_Gate) in [The Lord of the Rings](https://en.wikipedia.org/wiki/The_Lord_of_the_Rings_(film_series)) for some weird reason haha and the project needs a cool name so why not?
 
@@ -8,7 +8,7 @@ I named this project `Mordor` because Hell's Gate / Halo's Gate / Tartarus' Gate
 
 ## TODO (Development in progress)
 
-* Make it user friendly by using system call macros
+* Make it user friendly by using system call macros and adding usage to README.md
 * Port to Syswhisper3
 
 ## Hooking
@@ -53,20 +53,20 @@ However, if all functions are hooked then we can find the first one and unhook a
 
 ## FreshyCalls / SysWhispers1 / SysWhispers2 / SysWhispers3
 
-*"FreshyCalls tries to make the use of syscalls comfortable and simple, without generating too much boilerplate and in modern C++! Doesn't it bother you to have to define every syscall stub or function within a module? Or having to depend on the Windows version for the syscalls? Well, forget about all that. FreshyCalls makes use of some features implemented from C++11 such as the variadic templates along with some custom mini-shellcode to avoid this."* - crummie5
+"*FreshyCalls tries to make the use of syscalls comfortable and simple, without generating too much boilerplate and in modern C++! Doesn't it bother you to have to define every syscall stub or function within a module? Or having to depend on the Windows version for the syscalls? Well, forget about all that. FreshyCalls makes use of some features implemented from C++11 such as the variadic templates along with some custom mini-shellcode to avoid this.*" - crummie5
 
 
-The usage for [Syswhispers2](https://github.com/jthuraisamy/SysWhispers2) is almost identical to [SysWhispers1](https://github.com/jthuraisamy/SysWhispers) but you don't have to specify which versions of Windows to support. Most of the changes are under the hood. It no longer relies on [@j00ru](https://twitter.com/j00ru)'s [syscall tables](https://github.com/j00ru/windows-syscalls), and instead uses the "[sorting by system call address](https://www.mdsec.co.uk/2020/12/bypassing-user-mode-hooks-and-direct-invocation-of-system-calls-for-red-teams/)" technique popularized by [@modexpblog](https://twitter.com/modexpblog). This significantly reduces the size of the syscall stubs.
+"*The usage for [Syswhispers2](https://github.com/jthuraisamy/SysWhispers2) is almost identical to [SysWhispers1](https://github.com/jthuraisamy/SysWhispers) but you don't have to specify which versions of Windows to support. Most of the changes are under the hood. It no longer relies on [@j00ru](https://twitter.com/j00ru)'s [syscall tables](https://github.com/j00ru/windows-syscalls), and instead uses the "[sorting by system call address](https://www.mdsec.co.uk/2020/12/bypassing-user-mode-hooks-and-direct-invocation-of-system-calls-for-red-teams/)" technique popularized by [@modexpblog](https://twitter.com/modexpblog). This significantly reduces the size of the syscall stubs.*" - crummie5
 
 
-*"The usage for `SysWhispers3` is pretty similar to [SysWhispers2](https://github.com/jthuraisamy/SysWhispers2), with the following exceptions:
+"*The usage for `SysWhispers3` is pretty similar to [SysWhispers2](https://github.com/jthuraisamy/SysWhispers2), with the following exceptions:
 
 * It also supports x86/WoW64
 * It supports syscalls instruction replacement with an EGG (to be dynamically replaced)
 * It supports direct jumps to syscalls in x86/x64 mode (in WOW64 it's almost standard)
 * It supports direct jumps to random syscalls (borrowing [@ElephantSeal's idea](https://twitter.com/ElephantSe4l/status/1488464546746540042))
 
-A better explanation of these features are better outlined i the blog post [SysWhispers is dead, long live SysWhispers!][2]"* - Kelzvirus
+A better explanation of these features are better outlined I the blog post [NoSysWhisper](https://klezvirus.github.io/RedTeaming/AV_Evasion/NoSysWhisper/)*" - Kelzvirus
 
 
 ## In a nutshell:
