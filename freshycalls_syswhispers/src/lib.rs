@@ -12,10 +12,10 @@ use windows_sys::Win32::System::{
 
 const NTDLL_HASH: u32 = 0x1edab0ed;
 const NT_OPEN_PROCESS_HASH: u32 = 0x4b82f718;
-const NT_ALLOCATE_VIRTUAL_MEMORY: u32 = 0xf783b8ec;
-const NT_PROTECT_VIRTUAL_MEMORY: u32 = 0x50e92888;
-const NT_WRITE_VIRTUAL_MEMORY: u32 = 0xc3170192;
-const NT_CREATE_THREAD_EX: u32 = 0xaf18cfb0;
+const NT_ALLOCATE_VIRTUAL_MEMORY_HASH: u32 = 0xf783b8ec;
+const NT_PROTECT_VIRTUAL_MEMORY_HASH: u32 = 0x50e92888;
+const NT_WRITE_VIRTUAL_MEMORY_HASH: u32 = 0xc3170192;
+const NT_CREATE_THREAD_EX_HASH: u32 = 0xaf18cfb0;
 
 // Do unit testing
 #[cfg(test)]
@@ -36,16 +36,16 @@ mod tests {
             freshycalls_syswhispers(ntdll_base_address, NT_OPEN_PROCESS_HASH)
                 .expect("Failed to call freshycalls/syswhispers");
         let nt_allocate_virtual_memory_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_ALLOCATE_VIRTUAL_MEMORY)
+            freshycalls_syswhispers(ntdll_base_address, NT_ALLOCATE_VIRTUAL_MEMORY_HASH)
                 .expect("Failed to call freshycalls/syswhispers");
         let nt_protect_virtual_memory_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_PROTECT_VIRTUAL_MEMORY)
+            freshycalls_syswhispers(ntdll_base_address, NT_PROTECT_VIRTUAL_MEMORY_HASH)
                 .expect("Failed to call freshycalls/syswhispers");
         let nt_write_virtual_memory_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_WRITE_VIRTUAL_MEMORY)
+            freshycalls_syswhispers(ntdll_base_address, NT_WRITE_VIRTUAL_MEMORY_HASH)
                 .expect("Failed to call freshycalls/syswhispers");
         let nt_create_thread_ex_syscall =
-            freshycalls_syswhispers(ntdll_base_address, NT_CREATE_THREAD_EX)
+            freshycalls_syswhispers(ntdll_base_address, NT_CREATE_THREAD_EX_HASH)
                 .expect("Failed to call freshycalls/syswhispers");
 
         log::debug!("[+] NtOpenProcess Syscall: {:#x}", nt_open_process_syscall);
