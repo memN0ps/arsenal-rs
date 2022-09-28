@@ -5,12 +5,18 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+#default = ["_DIRECT_"]
+#default = ["_INDIRECT_"]
+_INDIRECT_ = []
+_DIRECT_ = []
+
 [dependencies]
 env_logger = "0.9.0"
 log = "0.4.17"
 sysinfo = "0.20.4"
 obfstr = "0.3.0"
-ntapi = "0.3.7"
+ntapi = { version = "0.4.0", features = ["impl-default"] }
 
 [dependencies.windows-sys]
 version = "0.36.1"

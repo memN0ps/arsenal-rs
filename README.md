@@ -1,19 +1,202 @@
-# Hell's Gate / Halo's Gate / Tartarus' Gate and FreshyCalls / SysWhispers2 in Rust
+# Hell's Gate / Halo's Gate / Tartarus' Gate and FreshyCalls / SysWhispers1 / SysWhispers2 / SysWhispers3 in Rust
 
 I named this project `Mordor` because Hell's Gate / Halo's Gate / Tartarus' Gate remind me of the [Black Gate of Mordor](https://shadowofwar.fandom.com/wiki/Black_Gate) in [The Lord of the Rings](https://en.wikipedia.org/wiki/The_Lord_of_the_Rings_(film_series)) for some weird reason haha and the project needs a cool name so why not?
 
 ![BlackGate](./blackgate.png)
 **Credits to [Middle-earth: Shadow of War Wiki](https://shadowofwar.fandom.com/wiki/Black_Gate)**
 
+## TODO
 
-## TODO (Development in progress)
+* Use an egghunter like Syswhispers3
 
-* Make it more user friendly
-* Add usage to README.md
-* Add System call / assembly macros
-* Decide on if I want to keep it a library or something that generates output files like SysWhispers1, SysWhispers2, SysWhispers3
+## Usage
 
-## Hooking
+The `morder-rs` project comes with 2 sub-projects called `freshycalls_syswhispers` and `hells_halos_tartarus_gate`. The difference between the Rust version of `freshycalls_syswhispers` and C/C++/Python version of `Syswhispers1/Syswhispers2/Syswhispers3` is that this project does not generate header/ASM files and output like `Syswhispers1/Syswhispers2/Syswhispers3` but utilizes the same techniques and are to be used as a library.
+
+1. Add the library to your Rust `Cargo.toml` file by setting the git repository or local path and choosing the direct or indirect system call feature by setting `_DIRECT_` or `_INDIRECT_` as a feature. Please note you can only choose direct `_DIRECT_` or `_INDIRECT_` not both.
+
+```toml
+[dependencies]
+freshycalls_syswhispers = { path = "../mordor-rs/freshycalls_syswhispers",  features = ["_DIRECT_"] }
+```
+
+```toml
+[dependencies]
+freshycalls_syswhispers = { path = "../mordor-rs/freshycalls_syswhispers",  features = ["_INDIRECT_"] }
+```
+
+or
+
+```toml
+[dependencies]
+freshycalls_syswhispers = { git = "https://github.com/memN0ps/mordor-rs/tree/main/freshycalls_syswhispers", features = ["_DIRECT_"] }
+```
+
+```toml
+[dependencies]
+freshycalls_syswhispers = { git = "https://github.com/memN0ps/mordor-rs/tree/main/freshycalls_syswhispers", features = ["_INDIRECT_"] }
+```
+
+2. Make use of the library
+
+```rust
+use freshycalls_syswhispers;
+```
+
+3. Dynamically retrieve the `SSN` and/or `syscall` instruction from `ntdll.dll` even if functions are hooked and call any function using direct and/or indirect `syscall`. Note that when calling a function using the `syscall` macro the string will be obfuscated by hashing.`NtClose` in this example.
+
+```rust
+unsafe { syscall!("NtClose", process_handle) };
+```
+
+## Example
+
+`Cargo.toml` file:
+
+```toml
+[package]
+name = "testing-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#freshycalls_syswhispers = { path = "../mordor-rs/freshycalls_syswhispers",  features = ["_DIRECT_"] }
+
+freshycalls_syswhispers = { path = "../mordor-rs/freshycalls_syswhispers",  features = ["_INDIRECT_"] }
+
+env_logger = "0.9.0"
+log = "0.4.17"
+sysinfo = "0.20.4"
+obfstr = "0.3.0"
+ntapi = { version = "0.4.0", features = ["impl-default"] }
+
+[dependencies.windows-sys]
+version = "0.36.1"
+features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Memory",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_SystemServices",
+    "Win32_System_WindowsProgramming",
+    "Win32_System_LibraryLoader",
+]
+```
+
+`main.rs` file:
+
+```rust
+use std::{os::windows::raw::HANDLE, ptr::null_mut};
+
+use freshycalls_syswhispers::{self, syscall, syscall_resolve::get_process_id_by_name};
+use ntapi::{
+    ntapi_base::CLIENT_ID,
+    winapi::{
+        shared::ntdef::{NT_SUCCESS, OBJECT_ATTRIBUTES},
+        um::winnt::{PROCESS_VM_READ, PROCESS_VM_WRITE},
+    },
+};
+
+fn main() {
+    env_logger::init();
+
+    let mut oa = OBJECT_ATTRIBUTES::default();
+
+    let process_id = get_process_id_by_name("notepad.exe");
+    let mut process_handle = process_id as HANDLE;
+
+    let mut ci = CLIENT_ID {
+        UniqueProcess: process_handle,
+        UniqueThread: null_mut(),
+    };
+
+    let status = unsafe {
+        syscall!(
+            "NtOpenProcess",
+            &mut process_handle,
+            PROCESS_VM_WRITE | PROCESS_VM_READ,
+            &mut oa,
+            &mut ci
+        )
+    };
+
+    log::debug!("status: {:#x}", status);
+
+    if !NT_SUCCESS(status) {
+        unsafe { syscall!("NtClose", process_handle) };
+        panic!("Failed to get a handle to the target process");
+    }
+
+    log::debug!("Process Handle: {:?}", process_handle);
+    unsafe { syscall!("NtClose", process_handle) };
+}
+```
+
+## Unit Tests
+
+The project has been tested with both `_DIRECT_` and `_INDIRECT_` system call features enabled and passed the unit tests even with hooks in place.
+
+```toml
+[features]
+default = ["_INDIRECT_"]
+```
+
+```
+$ cargo test
+<...redacted...>
+     Running unittests src\lib.rs (target\debug\deps\freshycalls_syswhispers-8106a187dc70ecbf.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\syscaller.rs (target\debug\deps\syscaller-60e96237a57b1d9a.exe)
+
+running 1 test
+test tests::test_open_process ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+
+   Doc-tests freshycalls_syswhispers
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+```toml
+[features]
+default = ["_DIRECT_"]
+```
+
+```
+     Running unittests src\lib.rs (target\debug\deps\freshycalls_syswhispers-7888fd45359c60a6.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\syscaller.rs (target\debug\deps\syscaller-546ab9a58b0eaa56.exe)
+
+running 1 test
+test tests::test_open_process ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+   Doc-tests freshycalls_syswhispers
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+## Description
+
+### Hooking
 
 Hooking is a technique used to intercept calls to pre-existing functions or redirect the execution flow of a legitimate API to another location in memory. This memory location could be controlled by an attacker, anti-virus (AV), end-point detection and response (EDR), or anti-cheat (AC).
 
@@ -23,8 +206,6 @@ Hooking is a technique used to intercept calls to pre-existing functions or redi
 
 ![BlackGate](./hooking.png)
 **Credits to [Kyle Mistele](https://kylemistele.medium.com/a-beginners-guide-to-edr-evasion-b98cc076eb9a)**
-
-## Description
 
 ### What is Hell's Gate / Halo's Gate / Tartarus' Gate?
 
@@ -90,7 +271,7 @@ A kernel-mode driver calls the Zw version of a native system services routine to
 
 `Syswhispers2:` The same as `FreshyCalls`, but this will search for `Zw` functions in the `Export Directory` and store the name by replacing `Zw` with `Nt`.
 
-`SysWhispers3` This is very similar to `SysWhispers2` with the exception that it also supports `x86/WoW64`, `syscalls instruction replacement with an EGG (to be dynamically replaced)`, `direct jumps to syscalls in x86/x64 mode (in WOW64 it's almost standard)`, `direct jumps to random syscalls` (borrowing [@ElephantSeal's idea](https://twitter.com/ElephantSe4l/status/1488464546746540042)).
+`SysWhispers3` This is very similar to `SysWhispers2` with the exception that it also supports x86/WoW64, syscalls instruction replacement with an EGG (to be dynamically replaced), direct jumps to syscalls in x86/x64 mode (in WOW64 it's almost standard), direct jumps to random syscalls (borrowing [@ElephantSeal's idea](https://twitter.com/ElephantSe4l/status/1488464546746540042)).
 
 Exercise for the reader by: An excellent blog by [Alice Climent-Pommeret](https://alice.climent-pommeret.red/posts/direct-syscalls-hells-halos-syswhispers2/) and [Kelzvirus](https://klezvirus.github.io/RedTeaming/AV_Evasion/NoSysWhisper/)
 
@@ -101,13 +282,13 @@ Exercise for the reader by: An excellent blog by [Alice Climent-Pommeret](https:
 * https://vxug.fakedoma.in/papers/VXUG/Exclusive/HellsGate.pdf
 * https://blog.sektor7.net/#!res/2021/halosgate.md - [@Reenz0h / @SEKTOR7net](https://twitter.com/SEKTOR7net)
 * https://github.com/trickster0/TartarusGate ([trickster0 / @trickster012](https://twitter.com/trickster012))
-* https://klezvirus.github.io/RedTeaming/AV_Evasion/NoSysWhisper/
+* https://trickster0.github.io/posts/Halo's-Gate-Evolves-to-Tartarus-Gate/
+* https://klezvirus.github.io/RedTeaming/AV_Evasion/NoSysWhisper/ [@KlezVirus](https://twitter.com/KlezVirus)
 * https://www.mdsec.co.uk/2020/12/bypassing-user-mode-hooks-and-direct-invocation-of-system-calls-for-red-teams/ - [@modexpblog](https://twitter.com/modexpblog)
-* https://github.com/janoglezcampos/rust_syscalls/
-* https://kylemistele.medium.com/a-beginners-guide-to-edr-evasion-b98cc076eb9a
+* https://github.com/janoglezcampos/rust_syscalls/ - [@httpyxel](https://twitter.com/httpyxel)
+* https://kylemistele.medium.com/a-beginners-guide-to-edr-evasion-b98cc076eb9a - [@AliceCliment](https://twitter.com/AliceCliment)
 * https://alice.climent-pommeret.red/posts/direct-syscalls-hells-halos-syswhispers2/
-
-* https://github.com/crummie5/FreshyCalls - crummie5
-* https://github.com/jthuraisamy/SysWhispers - jthuraisamy
-* https://github.com/jthuraisamy/SysWhispers2 - jthuraisamy
+* https://github.com/crummie5/FreshyCalls - [@ElephantSe4l](https://twitter.com/ElephantSe4l)
+* https://github.com/jthuraisamy/SysWhispers - [@Jackson_T](https://twitter.com/Jackson_T)
+* https://github.com/jthuraisamy/SysWhispers2 - [@Jackson_T](https://twitter.com/Jackson_T)
 * https://github.com/klezVirus/SysWhispers3 - [@klezVirus](https://twitter.com/KlezVirus)
