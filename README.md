@@ -8,10 +8,12 @@ I named this project `Mordor` because Hell's Gate / Halo's Gate / Tartarus' Gate
 ## TODO
 
 * Use an egghunter like Syswhispers3
+* Add similar syscall functionality for `hells_halos_tartarus_gate`
+* Add functionality in `hells_halos_tartarus_gate` to unhook if all function in `ntdll.dll` are hooked aka `Veles' Reek` at SEKTOR7. (I would just use `freshycalls_syswhispers` instead).
 
 ## Usage
 
-The `morder-rs` project comes with 2 sub-projects called `freshycalls_syswhispers` and `hells_halos_tartarus_gate`. The difference between the Rust version of `freshycalls_syswhispers` and C/C++/Python version of `Syswhispers1/Syswhispers2/Syswhispers3` is that this project does not generate header/ASM files and output like `Syswhispers1/Syswhispers2/Syswhispers3` but utilizes the same techniques and are to be used as a library.
+The `morder-rs` project comes with 2 sub-projects called `freshycalls_syswhispers` and `hells_halos_tartarus_gate`. The difference between the Rust version of `freshycalls_syswhispers` and C/C++/Python version of `Syswhispers1/Syswhispers2/Syswhispers3` is that this project does not generate header/ASM files and output like it but utilizes the same techniques and is to be used as a library.
 
 1. Add the library to your Rust `Cargo.toml` file by setting the git repository or local path and choosing the direct or indirect system call feature by setting `_DIRECT_` or `_INDIRECT_` as a feature. Please note you can only choose direct `_DIRECT_` or `_INDIRECT_` not both.
 
@@ -43,7 +45,7 @@ freshycalls_syswhispers = { git = "https://github.com/memN0ps/mordor-rs/tree/mai
 use freshycalls_syswhispers;
 ```
 
-3. Dynamically retrieve the `SSN` and/or `syscall` instruction from `ntdll.dll` even if functions are hooked and call any function using direct and/or indirect `syscall`. Note that when calling a function using the `syscall` macro the string will be obfuscated by hashing.`NtClose` in this example.
+3. Dynamically retrieve the `SSN` and/or `syscall` instruction from `ntdll.dll` even if functions are hooked and call any function using direct and/or indirect `syscall`. Note that when calling a function using the `syscall` macro the string will be obfuscated by hashing (`NtClose` in this example).
 
 ```rust
 unsafe { syscall!("NtClose", process_handle) };
@@ -63,7 +65,6 @@ edition = "2021"
 
 [dependencies]
 #freshycalls_syswhispers = { path = "../mordor-rs/freshycalls_syswhispers",  features = ["_DIRECT_"] }
-
 freshycalls_syswhispers = { path = "../mordor-rs/freshycalls_syswhispers",  features = ["_INDIRECT_"] }
 
 env_logger = "0.9.0"
@@ -174,6 +175,8 @@ default = ["_DIRECT_"]
 ```
 
 ```
+$ cargo test
+<...redacted...>
      Running unittests src\lib.rs (target\debug\deps\freshycalls_syswhispers-7888fd45359c60a6.exe)
 
 running 0 tests
