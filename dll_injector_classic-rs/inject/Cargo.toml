@@ -14,7 +14,7 @@ strip = true        # Automatically strip symbols from the binary.
 [dependencies]
 env_logger = "0.9.0"
 log = "0.4.17"
-sysinfo = "0.20.4"
+#sysinfo = "0.20.4"
 obfstr = "0.3.0"
 #ntapi = "0.4.0"
 
