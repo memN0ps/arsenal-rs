@@ -21,7 +21,7 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
-    if args.len() <= 2 {
+    if args.len() < 2 {
         println!("Usage: inject.exe <process> <dll path>");
         std::process::exit(1);
     }
