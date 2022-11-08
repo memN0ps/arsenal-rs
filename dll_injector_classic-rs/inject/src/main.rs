@@ -21,7 +21,7 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
-    if args.len() < 2 {
+    if args.len() < 3 {
         println!("Usage: inject.exe <process> <dll path>");
         std::process::exit(1);
     }
@@ -60,7 +60,7 @@ fn main() {
     }
 
     let mut tmp = 0;
-    let rpm_result = unsafe {
+    let wpm_result = unsafe {
         WriteProcessMemory(
             hprocess,
             allocated_memory,
@@ -70,7 +70,7 @@ fn main() {
         )
     };
 
-    if rpm_result == 0 {
+    if wpm_result == 0 {
         panic!("{}", obfstr!("[-] Error: failed to write to process memory"));
     }
 
@@ -107,10 +107,12 @@ fn main() {
     }
 
     unsafe { CloseHandle(hthread) };
+    unsafe { CloseHandle(hprocess) };
 
     log::info!("Injection Complete!");
 }
 
+/// Gets the process ID by name, take process name as a parameter
 fn get_process_id_by_name(process_name: &str) -> Result<u32, String> {
     let h_snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
 
@@ -126,7 +128,9 @@ fn get_process_id_by_name(process_name: &str) -> Result<u32, String> {
     }
 
     loop {
-        if String::from_utf8_lossy(&process_entry.szExeFile).contains(process_name) {
+        if convert_c_array_to_rust_string(process_entry.szExeFile.to_vec()).to_lowercase()
+            == process_name.to_lowercase()
+        {
             break;
         }
 
@@ -136,4 +140,16 @@ fn get_process_id_by_name(process_name: &str) -> Result<u32, String> {
     }
 
     return Ok(process_entry.th32ProcessID);
+}
+
+/// Converts a C null terminated String to a Rust String
+pub fn convert_c_array_to_rust_string(buffer: Vec<u8>) -> String {
+    let mut rust_string: Vec<u8> = Vec::new();
+    for char in buffer {
+        if char == 0 {
+            break;
+        }
+        rust_string.push(char as _);
+    }
+    String::from_utf8(rust_string).unwrap()
 }
