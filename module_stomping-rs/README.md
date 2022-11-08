@@ -1,6 +1,6 @@
 # Module Stomping / Module Overloading / DLL Hollowing
 
-A basic/simple PoC in Rust
+A basic/simple PoC in Rust made for fun, practice, and learning. Check out my Manual Mapper in Rust: https://github.com/memN0ps/mmapper-rs or Shellcode Reflective DLL Injection in Rust: https://github.com/memN0ps/srdi-rs for alternatives.
 
 ## Description
 
