@@ -62,7 +62,7 @@ We can inspect this memory location in more detail with `Windbg`. The memory loc
 ## Usage
 
 ```
-.\msstomping-rs.exe notepad.exe C:\Windows\System32\amsi.dll amsi.dll
+.\module_stomping-rs.exe <process> <full dll path> <dll name>
 ```
 
 ## Example

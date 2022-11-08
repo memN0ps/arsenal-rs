@@ -48,8 +48,8 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 {
-        println!("Usage: inject.exe <process> <dll name> <full dll path>");
-        println!(r"Example: inject.exe notepad.exe C:\Windows\System32\amsi.dll amsi.dll");
+        println!(r"Usage: .\module_stomping-rs.exe <process> <full dll path> <dll name>");
+        println!(r"Example: .\module_stomping-rs.exe notepad.exe C:\Windows\System32\amsi.dll amsi.dll");
         std::process::exit(1);
     }
 
