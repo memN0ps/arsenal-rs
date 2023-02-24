@@ -55,7 +55,7 @@ pub fn process_magic_test() -> Result<(), process::error::Error> {
 }
 
 pub fn named_pipe_impersonation() -> Result<(), token::error::Error> {
-    set_token_privileges(SE_IMPERSONATE_NAME, true)?;
+    //set_token_privileges(SE_IMPERSONATE_NAME, true)?;
     impersonate_named_pipe("test")?;
     Ok(())
 }

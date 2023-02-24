@@ -346,7 +346,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
     startup_info.cb = size_of::<STARTUPINFOW>() as u32;
     let mut process_info: PROCESS_INFORMATION = unsafe { std::mem::zeroed() };
 
-    let command = "C\\Windows\\System32\\cmd.exe"
+    let command = r"C:\Windows\System32\cmd.exe"
         .encode_utf16()
         .collect::<Vec<u16>>();
 
