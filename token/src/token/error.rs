@@ -25,4 +25,25 @@ pub enum Error {
 
     #[error("Failed to revert to self: {0}")]
     FailedToRevertToSelf(u32),
+
+    #[error("Failed to create named pipe: {0}")]
+    FailedToCreateNamedPipe(u32),
+
+    #[error("Failed to connect to named pipe: {0}")]
+    FailedToConnectNamedPipe(u32),
+
+    #[error("Failed to read from named pipe: {0}")]
+    FailedToReadFromNamedPipe(u32),
+
+    #[error("Failed to impersonate named pipe client: {0}")]
+    ImpersonateNamedPipeClient(u32),
+
+    #[error("Failed to open thread token: {0}")]
+    FailedToOpenThreadToken(u32),
+
+    #[error("Failed to get duplicate thread token: {0}")]
+    FailedToDuplicateThreadToken(u32),
+
+    #[error("Failed to create process with token: {0}")]
+    FailedToCreateProcessWithTokenW(u32),
 }

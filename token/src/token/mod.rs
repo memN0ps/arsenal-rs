@@ -13,6 +13,7 @@ use windows_sys::Win32::{
 };
 
 pub mod error;
+pub mod pipe;
 use self::error::Error;
 
 /// Retrieves the calling thread's last-error code value.
@@ -33,8 +34,7 @@ pub fn revert_to_self() -> Result<(), Error> {
     Ok(())
 }
 
-
-// The `steal_token` function attempts to retrieve a duplicated access token associated with a process, given its process ID. 
+// The `steal_token` function attempts to retrieve a duplicated access token associated with a process, given its process ID.
 // If successful, it returns a handle to the duplicated token, otherwise it returns an error indicating the reason for failure.
 pub fn steal_token(process_id: u32) -> Result<isize, Error> {
     // Opens an existing local process object.
@@ -84,8 +84,8 @@ pub fn steal_token(process_id: u32) -> Result<isize, Error> {
     return Ok(duplicate_token_handle);
 }
 
-/// The `make_token()` function attempts to authenticate a user with a given `domain`, `username`, and `password` by calling the `LogonUserW` function. 
-/// If successful, it returns a handle to a token that represents the logged-on user, 
+/// The `make_token()` function attempts to authenticate a user with a given `domain`, `username`, and `password` by calling the `LogonUserW` function.
+/// If successful, it returns a handle to a token that represents the logged-on user,
 /// which can be used to impersonate the specified user or create a process that runs in the context of the specified user.
 pub fn make_token(domain: &str, username: &str, password: &str) -> Result<isize, Error> {
     let domain_w = domain.encode_utf16().collect::<Vec<u16>>();
@@ -117,8 +117,8 @@ pub fn make_token(domain: &str, username: &str, password: &str) -> Result<isize,
     Ok(token_handle)
 }
 
-/// This `impersonate_token` function allows the calling thread to impersonate the security context of a logged-on user, 
-/// represented by a token handle. This can be useful for performing actions on behalf of another user, 
+/// This `impersonate_token` function allows the calling thread to impersonate the security context of a logged-on user,
+/// represented by a token handle. This can be useful for performing actions on behalf of another user,
 /// such as accessing files or resources that are only available to that user.
 pub fn impersonate_token(token_handle: isize) -> Result<isize, Error> {
     // The ImpersonateLoggedOnUser function lets the calling thread impersonate the security context of a logged-on user.
@@ -133,10 +133,10 @@ pub fn impersonate_token(token_handle: isize) -> Result<isize, Error> {
     Ok(token_handle)
 }
 
-/// The `set_token_privileges` function takes a privilege name and a boolean value to either enable or disable that privilege in the current process's access token. 
-/// It first looks up the locally unique identifier (`LUID`) for the specified privilege name using the `LookupPrivilegeValueW` function. 
-/// Then, it constructs a `TOKEN_PRIVILEGES` structure with the `LUID` and the desired attributes (enabled or disabled). 
-/// The function then opens the process's access token using the `OpenProcessToken` function and 
+/// The `set_token_privileges` function takes a privilege name and a boolean value to either enable or disable that privilege in the current process's access token.
+/// It first looks up the locally unique identifier (`LUID`) for the specified privilege name using the `LookupPrivilegeValueW` function.
+/// Then, it constructs a `TOKEN_PRIVILEGES` structure with the `LUID` and the desired attributes (enabled or disabled).
+/// The function then opens the process's access token using the `OpenProcessToken` function and
 /// calls the `AdjustTokenPrivileges` function to adjust the privileges in the token.
 pub fn set_token_privileges(privilege: &str, enable: bool) -> Result<(), Error> {
     let privilege_w = privilege.encode_utf16().collect::<Vec<u16>>();

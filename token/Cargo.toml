@@ -41,4 +41,7 @@ features = [
     "Win32_Globalization",
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_Kernel",
+    "Win32_System_Pipes",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
 ]

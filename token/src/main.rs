@@ -1,8 +1,6 @@
 mod process;
 mod token;
-use crate::{
-    token::{set_token_privileges, steal_token, make_token},
-};
+use crate::token::{make_token, pipe::impersonate_named_pipe, set_token_privileges, steal_token};
 use token::{impersonate_token, revert_to_self};
 use windows_sys::Win32::System::SystemServices::{SE_ASSIGNPRIMARYTOKEN_NAME, SE_DEBUG_NAME};
 mod privileges;
@@ -10,6 +8,9 @@ mod privileges;
 fn main() {
     println!("Hello, world!");
     env_logger::init();
+
+    impersonate_named_pipe().expect("FAILED NAMED PIPE IMPERSONATION");
+
     match token_magic_test() {
         Ok(_) => log::info!("token_magic_test success!"),
         Err(e) => log::error!("Error: token_magic_test failed {:?}", e),

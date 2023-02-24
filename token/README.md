@@ -39,9 +39,14 @@ The `set_token_privileges` function takes a privilege name and a boolean value t
 
 ### Named Pipe Token Impersonation (TODO)
 
+```
+echo "lol" > \\.\pipe\test
+```
 
 ## Credits / References
 
 * [C5pider](https://twitter.com/C5pider): https://github.com/HavocFramework/Havoc
 * [zblurx](https://twitter.com/_zblurx): https://github.com/zblurx/impersonate-rs (Just saw this was done too. This one is much better than mine and actually usable)
 * This project was dedicated to [@_RastaMouse](https://twitter.com/_RastaMouse)
+* https://book.hacktricks.xyz/windows-hardening/windows-local-privilege-escalation/named-pipe-client-impersonation
+* https://github.com/rapid7/metasploit-payloads/blob/master/c/meterpreter/source/extensions/priv/namedpipe.c
