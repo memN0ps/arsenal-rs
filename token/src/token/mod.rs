@@ -4,7 +4,7 @@ use windows_sys::Win32::{
         AdjustTokenPrivileges, DuplicateTokenEx, ImpersonateLoggedOnUser, LogonUserW,
         LookupPrivilegeValueW, RevertToSelf, SecurityImpersonation, TokenPrimary,
         LOGON32_LOGON_NEW_CREDENTIALS, LOGON32_PROVIDER_DEFAULT, SE_PRIVILEGE_ENABLED,
-        TOKEN_ALL_ACCESS, TOKEN_DUPLICATE, TOKEN_IMPERSONATE, TOKEN_PRIVILEGES, TOKEN_QUERY,
+        TOKEN_ALL_ACCESS, TOKEN_DUPLICATE, TOKEN_IMPERSONATE, TOKEN_PRIVILEGES, TOKEN_QUERY, TOKEN_ADJUST_SESSIONID,
     },
     Storage::FileSystem::{ReadFile, PIPE_ACCESS_DUPLEX},
     System::{
@@ -77,7 +77,7 @@ pub fn steal_token(process_id: u32) -> Result<isize, Error> {
     let duplicate_token_result = unsafe {
         DuplicateTokenEx(
             token_handle,
-            TOKEN_ALL_ACCESS,
+            TOKEN_ALL_ACCESS | TOKEN_ADJUST_SESSIONID,
             std::ptr::null_mut(),
             SecurityImpersonation,
             TokenPrimary,
@@ -148,14 +148,13 @@ pub fn impersonate_token(token_handle: isize) -> Result<isize, Error> {
 /// Then, it constructs a `TOKEN_PRIVILEGES` structure with the `LUID` and the desired attributes (enabled or disabled).
 /// The function then opens the process's access token using the `OpenProcessToken` function and
 /// calls the `AdjustTokenPrivileges` function to adjust the privileges in the token.
-pub fn set_token_privileges(privilege: &str, enable: bool) -> Result<(), Error> {
-    let privilege_w = privilege.encode_utf16().collect::<Vec<u16>>();
+pub fn set_token_privileges(privilege: *const u16, enable: bool) -> Result<(), Error> {
     let mut token_luid: LUID = unsafe { std::mem::zeroed() };
 
     // The LookupPrivilegeValue function retrieves the locally unique identifier (LUID) used on a specified system to locally represent the specified privilege name.
     // https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-lookupprivilegevaluew
     let lookup_token_privilege_valuew_result =
-        unsafe { LookupPrivilegeValueW(std::ptr::null(), privilege_w.as_ptr(), &mut token_luid) };
+        unsafe { LookupPrivilegeValueW(std::ptr::null(), privilege, &mut token_luid) };
 
     if lookup_token_privilege_valuew_result == 0 {
         return Err(Error::FailedToLookupPrivilegeValue(get_last_error()));
@@ -175,7 +174,7 @@ pub fn set_token_privileges(privilege: &str, enable: bool) -> Result<(), Error> 
     // The OpenProcessToken function opens the access token associated with a process.
     // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocesstoken
     let open_process_token_result =
-        unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &mut token_handle) };
+        unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS | TOKEN_ADJUST_SESSIONID, &mut token_handle) };
 
     if open_process_token_result == 0 {
         return Err(Error::FailedToOpenProcessToken(get_last_error()));
@@ -304,7 +303,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
     // The OpenThreadToken function opens the access token associated with a thread.
     // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openthreadtoken
     let open_thread_token_result =
-        unsafe { OpenThreadToken(thread_handle, TOKEN_ALL_ACCESS, 0, &mut thread_token) };
+        unsafe { OpenThreadToken(thread_handle, TOKEN_ALL_ACCESS | TOKEN_ADJUST_SESSIONID, 0, &mut thread_token) };
 
     if open_thread_token_result == 0 {
         unsafe { CloseHandle(thread_handle as _) };
@@ -324,7 +323,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
     let duplicate_token_result = unsafe {
         DuplicateTokenEx(
             thread_token,
-            TOKEN_ALL_ACCESS, // bug https://github.com/microsoft/win32metadata/issues/1410 (fixed in latest version)
+            TOKEN_ALL_ACCESS | TOKEN_ADJUST_SESSIONID, // bug https://github.com/microsoft/win32metadata/issues/1410 (fixed in latest version after 0.45.0 windows-sys)
             std::ptr::null_mut(),
             SecurityImpersonation,
             TokenPrimary,

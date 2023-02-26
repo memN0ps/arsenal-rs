@@ -53,7 +53,7 @@ This `impersonate_named_pipe` creates a named pipe with a specified name, waits 
 5.  `DuplicateTokenEx`: Creates a new access token that duplicates an existing token.
 6.  `CreateProcessWithTokenW`: Creates a new process and its primary thread using the specified token.
 
-Create a named pipe, wait for the client process to connect to an instance of a named pipe.
+Create a named pipe, wait for the client process to connect to an instance of a named pipe. Please note, you MUST have the `SeImpersonatePrivilege` privilege, which is usually enabled as a administrator in a high integrity context.
 ```
 C:\Users\memN0ps\Documents\GitHub\arsenal-rs\token\target\debug\token.exe
 ```
