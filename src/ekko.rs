@@ -128,12 +128,13 @@ pub fn ekko(sleep_time: u32) {
     }
 
     log::info!("[+] Copying ctx_thread to rop chains");
-    let mut rop_prot_rw = ctx_thread.clone();
-    let mut rop_mem_enc = ctx_thread.clone();
-    let mut rop_delay = ctx_thread.clone();
-    let mut rop_mem_dec = ctx_thread.clone();
-    let mut rop_prot_rx = ctx_thread.clone();
-    let mut rop_set_evt = ctx_thread.clone();
+    // Clone not required as it implements the copy trait
+    let mut rop_prot_rw = ctx_thread;
+    let mut rop_mem_enc = ctx_thread;
+    let mut rop_delay = ctx_thread;
+    let mut rop_mem_dec = ctx_thread;
+    let mut rop_prot_rx = ctx_thread;
+    let mut rop_set_evt = ctx_thread;
 
     log::info!("[+] Building ROP chain");
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
