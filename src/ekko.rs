@@ -6,7 +6,7 @@ use std::{
 };
 use winapi::{
     shared::ntdef::BOOLEAN,
-    um::winnt::{RtlCaptureContext, CONTEXT},
+    um::winnt::{CONTEXT, PCONTEXT, RtlCaptureContext},
 };
 use windows_sys::Win32::{
     Foundation::{HANDLE, UNICODE_STRING},
@@ -24,18 +24,19 @@ use windows_sys::Win32::{
 };
 
 pub unsafe extern "system" fn call_rtl_capture_context(param0: *mut c_void, _param1: BOOLEAN) {
+    // Retrieves a context record in the context of the caller.
+    // https://learn.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-rtlcapturecontext
     RtlCaptureContext(param0.cast());
 }
 
 pub unsafe extern "system" fn call_nt_continue(param0: *mut c_void, _param1: BOOLEAN) {
+    // You can use NtContinue after processing exception for continue executing thread. System uses NtContinue also in APC processing.
+    // http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FNT%20Objects%2FThread%2FNtContinue.html
+    //https://doxygen.reactos.org/d6/d9e/include_2reactos_2wine_2winternl_8h.html#ac28b5db9f434d0762d6bebc7dcdd608f
     NtContinue(param0.cast(), 0);
 }
 
 pub fn ekko(sleep_time: u32) {
-    // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
-    // https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-context
-    let ctx_thread: CONTEXT = unsafe { zeroed::<CONTEXT>() };
-
     let mut h_new_timer: HANDLE = 0;
     let mut old_protect: u32 = 0;
 
@@ -100,14 +101,22 @@ pub fn ekko(sleep_time: u32) {
     img.MaximumLength = image_size as u16;
 
     log::info!("[+] Calling CreateTimerQueueTimer with ctx_thread");
+    pause();   
+    
+    // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
+    // https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-context
+    #[repr(align(16))] struct ProperlyAlignedContext(pub CONTEXT);
+    let mut ctx_thread = unsafe { std::mem::zeroed::<ProperlyAlignedContext>() };
+    let ctx_thread_ptr : PCONTEXT = &mut ctx_thread.0;
+    
     // Creates a timer-queue timer. This timer expires at the specified due time, then after every specified period. When the timer expires, the callback function is called.
-    // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueuetimer
+    // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueuetimer 
     let result = unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
             Some(call_rtl_capture_context),
-            &ctx_thread as *const _ as *const _,
+            ctx_thread_ptr as _,
             0,
             0,
             WT_EXECUTEINTIMERTHREAD,
@@ -129,17 +138,17 @@ pub fn ekko(sleep_time: u32) {
 
     log::info!("[+] Copying ctx_thread to rop chains");
     // Clone not required as it implements the copy trait
-    let mut rop_prot_rw = ctx_thread;
-    let mut rop_mem_enc = ctx_thread;
-    let mut rop_delay = ctx_thread;
-    let mut rop_mem_dec = ctx_thread;
-    let mut rop_prot_rx = ctx_thread;
-    let mut rop_set_evt = ctx_thread;
+    let mut rop_prot_rw = ctx_thread.0.clone();
+    let mut rop_mem_enc = ctx_thread.0.clone();
+    let mut rop_delay = ctx_thread.0.clone();
+    let mut rop_mem_dec = ctx_thread.0.clone();
+    let mut rop_prot_rx = ctx_thread.0.clone();
+    let mut rop_set_evt = ctx_thread.0.clone();
 
     log::info!("[+] Building ROP chain");
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Memory/fn.VirtualProtect.html
-    rop_prot_rw.Rsp -= 8;
+    rop_prot_rw.Rsp = -8 as isize as u64;
     rop_prot_rw.Rip = VirtualProtect as u64;
     rop_prot_rw.Rcx = image_base as *const c_void as u64;
     rop_prot_rw.Rdx = image_size as u64;
@@ -150,7 +159,7 @@ pub fn ekko(sleep_time: u32) {
     // https://doxygen.reactos.org/df/d13/sysfunc_8c.html#a66d55017b8625d505bd6c5707bdb9725
     // NTSTATUS WINAPI SystemFunction032(struct ustring *data, const struct ustring *key)
     // pub unsafe extern "system" fn SystemFunction032(randombuffer: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> BOOLEAN
-    rop_mem_enc.Rsp -= 8;
+    rop_mem_enc.Rsp = -8 as isize as u64;
     rop_mem_enc.Rip = sys_func032.unwrap() as u64;
     rop_mem_enc.Rcx = &mut img as *mut UNICODE_STRING as *mut c_void as u64;
     rop_mem_enc.Rdx = &key as *const UNICODE_STRING as *const c_void as u64;
@@ -158,7 +167,7 @@ pub fn ekko(sleep_time: u32) {
 
     // pub unsafe extern "system" fn WaitForSingleObject(hhandle: HANDLE, dwmilliseconds: u32) -> WIN32_ERROR
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Threading/fn.WaitForSingleObject.html
-    rop_delay.Rsp -= 8;
+    rop_delay.Rsp = -8 as isize as u64;
     rop_delay.Rip = WaitForSingleObject as u64;
     rop_delay.Rcx = -1 as isize as u64; // NtCurrentProcess
     rop_delay.Rdx = sleep_time as u64;
@@ -167,7 +176,7 @@ pub fn ekko(sleep_time: u32) {
     // https://doxygen.reactos.org/df/d13/sysfunc_8c.html#a66d55017b8625d505bd6c5707bdb9725
     // NTSTATUS WINAPI SystemFunction032(struct ustring *data, const struct ustring *key)
     // pub unsafe extern "system" fn SystemFunction032(randombuffer: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> BOOLEAN
-    rop_mem_dec.Rsp -= 8;
+    rop_mem_dec.Rsp = -8 as isize as u64;
     rop_mem_dec.Rip = sys_func032.unwrap() as u64;
     rop_mem_dec.Rcx = &mut img as *mut UNICODE_STRING as *mut c_void as u64;
     rop_mem_enc.Rdx = &key as *const UNICODE_STRING as *const c_void as u64;
@@ -175,7 +184,7 @@ pub fn ekko(sleep_time: u32) {
 
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Memory/fn.VirtualProtect.html
-    rop_prot_rx.Rsp -= 8;
+    rop_prot_rx.Rsp = -8 as isize as u64;
     rop_prot_rx.Rip = VirtualProtect as u64;
     rop_prot_rx.Rcx = image_base as *const c_void as u64;
     rop_prot_rx.Rdx = image_size as u64;
@@ -185,7 +194,7 @@ pub fn ekko(sleep_time: u32) {
 
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Threading/fn.SetEvent.html
     // pub unsafe extern "system" fn SetEvent(hevent: HANDLE) -> BOOL
-    rop_set_evt.Rsp -= 8;
+    rop_set_evt.Rsp = -8 as isize as u64;
     rop_set_evt.Rip = SetEvent as u64;
     rop_set_evt.Rcx = h_event as u64;
     dump_set_event_context(&rop_set_evt);

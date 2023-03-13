@@ -13,4 +13,4 @@ For debugging uncomment `env_logger::init();` in main and set Powershell environ
 - Originally discovered by [Peter Winter-Smith](peterwintrsmith) and used in MDSec’s Nighthawk
 - Thanks for contributing [@trickster012](https://twitter.com/trickster012)
 - https://learn.microsoft.com/
-- Rust Lang Community Discord: https://discord.com/invite/rust-lang-community
+- Rust Lang Community Discord: https://discord.com/invite/rust-lang-community ([MaulingMonkey](https://github.com/MaulingMonkey/))
