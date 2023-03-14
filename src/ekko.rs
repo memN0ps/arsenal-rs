@@ -102,7 +102,7 @@ pub fn ekko(sleep_time: u32) {
     // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
     // https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-context
     let mut ctx_thread = unsafe { std::mem::zeroed::<ProperlyAlignedContext>() };
-    let ctx_thread_ptr : *mut CONTEXT = &mut ctx_thread.0;
+    let ctx_thread_ptr: *mut CONTEXT = &mut ctx_thread.0;
     
     // Creates a timer-queue timer. This timer expires at the specified due time, then after every specified period. When the timer expires, the callback function is called.
     // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueuetimer 
@@ -133,12 +133,12 @@ pub fn ekko(sleep_time: u32) {
 
     log::info!("[+] Copying ctx_thread to rop chains");
     // Clone not required as it implements the copy trait
-    let mut rop_prot_rw = ctx_thread.0;
-    let mut rop_mem_enc = ctx_thread.0;
-    let mut rop_delay = ctx_thread.0;
-    let mut rop_mem_dec = ctx_thread.0;
-    let mut rop_prot_rx = ctx_thread.0;
-    let mut rop_set_evt = ctx_thread.0;
+    let mut rop_prot_rw = ctx_thread;
+    let mut rop_mem_enc = ctx_thread;
+    let mut rop_delay = ctx_thread;
+    let mut rop_mem_dec = ctx_thread;
+    let mut rop_prot_rx = ctx_thread;
+    let mut rop_set_evt = ctx_thread;
 
     log::info!("[+] Building ROP chain");
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
@@ -328,6 +328,10 @@ pub fn ekko(sleep_time: u32) {
 impl core::ops::Deref for ProperlyAlignedContext {
     type Target = CONTEXT;
     fn deref(&self) -> &CONTEXT { &self.0 }
+}
+
+impl core::ops::DerefMut for ProperlyAlignedContext {
+    fn deref_mut(&mut self) -> &mut CONTEXT { &mut self.0 }
 }
 
 #[allow(dead_code)]
