@@ -173,7 +173,7 @@ pub fn ekko(sleep_time: u32) {
     rop_mem_dec.Rsp -= 8;
     rop_mem_dec.Rip = sys_func032.unwrap() as u64;
     rop_mem_dec.Rcx = &mut img as *mut UNICODE_STRING as *mut c_void as u64;
-    rop_mem_enc.Rdx = &key as *const UNICODE_STRING as *const c_void as u64;
+    rop_mem_dec.Rdx = &key as *const UNICODE_STRING as *const c_void as u64;
     dump_system_function036_context(&rop_mem_dec);
 
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
