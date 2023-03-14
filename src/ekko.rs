@@ -101,9 +101,8 @@ pub fn ekko(sleep_time: u32) {
     
     // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
     // https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-context
-    let mut ctx_thread = unsafe { std::mem::zeroed::<ProperlyAlignedContext>() };
-    let ctx_thread_ptr: *mut CONTEXT = &mut ctx_thread.0;
-    
+    let ctx_thread = unsafe { std::mem::zeroed::<ProperlyAlignedContext>() };
+
     // Creates a timer-queue timer. This timer expires at the specified due time, then after every specified period. When the timer expires, the callback function is called.
     // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueuetimer 
     let result = unsafe {
@@ -111,7 +110,7 @@ pub fn ekko(sleep_time: u32) {
             &mut h_new_timer,
             h_timer_queue,
             Some(call_rtl_capture_context),
-            ctx_thread_ptr as _,
+            &ctx_thread as *const ProperlyAlignedContext as *mut c_void,
             0,
             0,
             WT_EXECUTEINTIMERTHREAD,
@@ -323,7 +322,8 @@ pub fn ekko(sleep_time: u32) {
 
 // BUG in windows-rs/windows-sys and WINAPI: https://github.com/microsoft/win32metadata/issues/1044
 #[derive(Clone, Copy)]
-#[repr(align(16))] struct ProperlyAlignedContext(pub CONTEXT);
+#[repr(align(16))] 
+struct ProperlyAlignedContext(pub CONTEXT);
 
 impl core::ops::Deref for ProperlyAlignedContext {
     type Target = CONTEXT;
