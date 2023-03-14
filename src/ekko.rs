@@ -1,17 +1,13 @@
-use ntapi::{ntxcapi::NtContinue, winapi::um::errhandlingapi::GetLastError};
+use ntapi::{ntxcapi::NtContinue};
 use std::{
     ffi::c_void,
     mem::zeroed,
     ptr::{null, null_mut},
 };
-use winapi::{
-    shared::ntdef::BOOLEAN,
-    um::winnt::{CONTEXT, PCONTEXT, RtlCaptureContext},
-};
 use windows_sys::Win32::{
-    Foundation::{HANDLE, UNICODE_STRING},
+    Foundation::{HANDLE, UNICODE_STRING, BOOLEAN, GetLastError},
     System::{
-        Diagnostics::Debug::IMAGE_NT_HEADERS64,
+        Diagnostics::Debug::{IMAGE_NT_HEADERS64, RtlCaptureContext, CONTEXT},
         LibraryLoader::{GetModuleHandleA, GetProcAddress, LoadLibraryA},
         Memory::{VirtualProtect, PAGE_EXECUTE_READ, PAGE_PROTECTION_FLAGS, PAGE_READWRITE},
         SystemServices::IMAGE_DOS_HEADER,
@@ -105,9 +101,8 @@ pub fn ekko(sleep_time: u32) {
     
     // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
     // https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-context
-    #[repr(align(16))] struct ProperlyAlignedContext(pub CONTEXT);
     let mut ctx_thread = unsafe { std::mem::zeroed::<ProperlyAlignedContext>() };
-    let ctx_thread_ptr : PCONTEXT = &mut ctx_thread.0;
+    let ctx_thread_ptr : *mut CONTEXT = &mut ctx_thread.0;
     
     // Creates a timer-queue timer. This timer expires at the specified due time, then after every specified period. When the timer expires, the callback function is called.
     // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueuetimer 
@@ -138,12 +133,12 @@ pub fn ekko(sleep_time: u32) {
 
     log::info!("[+] Copying ctx_thread to rop chains");
     // Clone not required as it implements the copy trait
-    let mut rop_prot_rw = ctx_thread.0.clone();
-    let mut rop_mem_enc = ctx_thread.0.clone();
-    let mut rop_delay = ctx_thread.0.clone();
-    let mut rop_mem_dec = ctx_thread.0.clone();
-    let mut rop_prot_rx = ctx_thread.0.clone();
-    let mut rop_set_evt = ctx_thread.0.clone();
+    let mut rop_prot_rw = ctx_thread.0;
+    let mut rop_mem_enc = ctx_thread.0;
+    let mut rop_delay = ctx_thread.0;
+    let mut rop_mem_dec = ctx_thread.0;
+    let mut rop_prot_rx = ctx_thread.0;
+    let mut rop_set_evt = ctx_thread.0;
 
     log::info!("[+] Building ROP chain");
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
@@ -324,6 +319,15 @@ pub fn ekko(sleep_time: u32) {
     unsafe {
         DeleteTimerQueue(h_timer_queue);
     }
+}
+
+// BUG in windows-rs/windows-sys and WINAPI: https://github.com/microsoft/win32metadata/issues/1044
+#[derive(Clone, Copy)]
+#[repr(align(16))] struct ProperlyAlignedContext(pub CONTEXT);
+
+impl core::ops::Deref for ProperlyAlignedContext {
+    type Target = CONTEXT;
+    fn deref(&self) -> &CONTEXT { &self.0 }
 }
 
 #[allow(dead_code)]
