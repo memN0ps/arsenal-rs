@@ -351,7 +351,7 @@ pub fn pause() {
     };
 }
 
-fn dump_virtual_protect_context(rop: &CONTEXT) {
+fn dump_virtual_protect_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> VirtualProtect({:#x}, {:#x}, {:#x}, {:#x})",
         rop.Rsp,
@@ -363,7 +363,7 @@ fn dump_virtual_protect_context(rop: &CONTEXT) {
     );
 }
 
-fn dump_system_function036_context(rop: &CONTEXT) {
+fn dump_system_function036_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> SystemFunction032({:#x}, {:#x})",
         rop.Rsp,
@@ -373,7 +373,7 @@ fn dump_system_function036_context(rop: &CONTEXT) {
     );
 }
 
-fn dump_wait_for_single_object_context(rop: &CONTEXT) {
+fn dump_wait_for_single_object_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> WaitForSingleObject({:#x}, {:#x})",
         rop.Rsp,
@@ -383,7 +383,7 @@ fn dump_wait_for_single_object_context(rop: &CONTEXT) {
     );
 }
 
-fn dump_set_event_context(rop: &CONTEXT) {
+fn dump_set_event_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> SetEvent({:#x})",
         rop.Rsp,
