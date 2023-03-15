@@ -1,7 +1,6 @@
 use ntapi::winapi::shared::ntdef::{NTSTATUS, NT_SUCCESS};
 use obfstr::obfstr;
 use std::ptr::null_mut;
-use windows_sys::Win32::Foundation::UNICODE_STRING;
 use windows_sys::Win32::Security::Authentication::Identity::SystemFunction040;
 use windows_sys::Win32::{
     Security::Authentication::Identity::SystemFunction041,
@@ -10,6 +9,14 @@ use windows_sys::Win32::{
         SystemServices::IMAGE_DOS_HEADER,
     },
 };
+
+//https://doxygen.reactos.org/da/dab/structustring.html
+#[repr(C)]
+struct UString {
+    length: u32,
+    maximum_length: u32,
+    buffer: *mut u8,
+}
 
 fn main() {
     env_logger::init();
@@ -88,7 +95,7 @@ fn rtl_decrypt_memory(image_base: isize, image_size: usize) -> Result<Vec<u8>, (
 }
 
 extern "system" {
-    fn SystemFunction032(data: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> NTSTATUS;
+    fn SystemFunction032(data: *mut UString, key: *const UString) -> NTSTATUS;
 }
 
 fn encrypt_or_decrypt_mem_region_with_key(
@@ -100,16 +107,16 @@ fn encrypt_or_decrypt_mem_region_with_key(
         unsafe { std::slice::from_raw_parts_mut(image_base as *mut u8, image_size).to_vec() };
 
     // https://doxygen.reactos.org/df/d13/sysfunc_8c.html#a66d55017b8625d505bd6c5707bdb9725
-    let key = UNICODE_STRING {
-        Length: secret.len() as u16,
-        MaximumLength: secret.len() as u16,
-        Buffer: secret.as_mut_ptr() as *mut u16,
+    let key = UString {
+        length: secret.len() as u32,
+        maximum_length: secret.len() as u32,
+        buffer: secret.as_mut_ptr(),
     };
 
-    let mut data = UNICODE_STRING {
-        Length: image_buffer.len() as u16,
-        MaximumLength: image_buffer.len() as u16,
-        Buffer: image_buffer.as_mut_ptr() as *mut u16,
+    let mut data = UString {
+        length: image_buffer.len() as u32,
+        maximum_length: image_buffer.len() as u32,
+        buffer: image_buffer.as_mut_ptr(),
     };
 
     let status = unsafe { SystemFunction032(&mut data, &key) };
