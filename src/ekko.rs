@@ -9,7 +9,7 @@ use windows_sys::Win32::{
     System::{
         Diagnostics::Debug::{IMAGE_NT_HEADERS64, RtlCaptureContext, CONTEXT},
         LibraryLoader::{GetModuleHandleA, GetProcAddress, LoadLibraryA},
-        Memory::{VirtualProtect, PAGE_EXECUTE_READ, PAGE_PROTECTION_FLAGS, PAGE_READWRITE},
+        Memory::{VirtualProtect, PAGE_PROTECTION_FLAGS, PAGE_EXECUTE_READ},
         SystemServices::IMAGE_DOS_HEADER,
         Threading::{
             CreateEventW, CreateTimerQueue, CreateTimerQueueTimer, DeleteTimerQueue, SetEvent,
@@ -146,7 +146,7 @@ pub fn ekko(sleep_time: u32) {
     rop_prot_rw.Rip = VirtualProtect as u64;
     rop_prot_rw.Rcx = image_base as *const c_void as u64;
     rop_prot_rw.Rdx = image_size as u64;
-    rop_prot_rw.R8 = PAGE_READWRITE as u64;
+    rop_prot_rw.R8 = PAGE_EXECUTE_READ as u64;
     rop_prot_rw.R9 = &mut old_protect as *mut PAGE_PROTECTION_FLAGS as u64;
     dump_virtual_protect_context(&rop_prot_rw);
 
@@ -157,7 +157,7 @@ pub fn ekko(sleep_time: u32) {
     rop_mem_enc.Rip = sys_func032.unwrap() as u64;
     rop_mem_enc.Rcx = &mut img as *mut UNICODE_STRING as *mut c_void as u64;
     rop_mem_enc.Rdx = &key as *const UNICODE_STRING as *const c_void as u64;
-    dump_system_function036_context(&rop_mem_enc);
+    dump_system_function032_context(&rop_mem_enc);
 
     // pub unsafe extern "system" fn WaitForSingleObject(hhandle: HANDLE, dwmilliseconds: u32) -> WIN32_ERROR
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Threading/fn.WaitForSingleObject.html
@@ -174,7 +174,7 @@ pub fn ekko(sleep_time: u32) {
     rop_mem_dec.Rip = sys_func032.unwrap() as u64;
     rop_mem_dec.Rcx = &mut img as *mut UNICODE_STRING as *mut c_void as u64;
     rop_mem_dec.Rdx = &key as *const UNICODE_STRING as *const c_void as u64;
-    dump_system_function036_context(&rop_mem_dec);
+    dump_system_function032_context(&rop_mem_dec);
 
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Memory/fn.VirtualProtect.html
@@ -363,7 +363,7 @@ fn dump_virtual_protect_context(rop: &ProperlyAlignedContext) {
     );
 }
 
-fn dump_system_function036_context(rop: &ProperlyAlignedContext) {
+fn dump_system_function032_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> SystemFunction032({:#x}, {:#x})",
         rop.Rsp,
