@@ -1,6 +1,7 @@
-use ntapi::winapi::shared::ntdef::NT_SUCCESS;
+use ntapi::winapi::shared::ntdef::{NTSTATUS, NT_SUCCESS};
 use obfstr::obfstr;
 use std::ptr::null_mut;
+use windows_sys::Win32::Foundation::UNICODE_STRING;
 use windows_sys::Win32::Security::Authentication::Identity::SystemFunction040;
 use windows_sys::Win32::{
     Security::Authentication::Identity::SystemFunction041,
@@ -22,19 +23,27 @@ fn main() {
     let mut encrypted_image_buffer = rtl_encrypt_memory(image_base, image_size as usize)
         .expect(obfstr!("Failed to decrypt memory!"));
     log::info!(
-        "Encrypted image base {:p} successfully!",
-        encrypted_image_buffer.as_mut_ptr()
+        "SystemFunction040: Encrypted image base at {:#x} successfully! Encrypted buffer address: {:p}",
+        image_base, encrypted_image_buffer.as_mut_ptr()
     );
 
-    let mut decrypted_image_buffer = rtl_decrypt_memory(
-        encrypted_image_buffer.as_mut_ptr() as isize,
-        encrypted_image_buffer.len() as usize,
-    )
-    .expect(obfstr!("Failed to decrypt memory!"));
+    let mut decrypted_image_buffer = rtl_decrypt_memory(image_base, image_size as usize)
+        .expect(obfstr!("Failed to decrypt memory!"));
     log::info!(
-        "Decrypted image base {:p} successfully!",
-        decrypted_image_buffer.as_mut_ptr()
+        "SystemFunction041: Decrypted image base {:#x} successfully! Decrypted buffer address: {:p}",
+        image_base, decrypted_image_buffer.as_mut_ptr()
     );
+
+    let mut secret = "1234567890ABCDEF\0".as_bytes().to_vec();
+    let mut encrypted_buffer =
+        encrypt_or_decrypt_mem_region_with_key(image_base, image_size as _, &mut secret)
+            .expect(obfstr!("Failed to encrypt memory with key!"));
+    log::info!("SystemFunction032: Encrypted buffer with key {:#x} successfully! Encrypted buffer address: {:p}", image_base, encrypted_buffer.as_mut_ptr());
+
+    let mut decrypted_buffer =
+        encrypt_or_decrypt_mem_region_with_key(image_base, image_size as _, &mut secret)
+            .expect(obfstr!("Failed to decrypt memory with key!"));
+    log::info!("SystemFunction032: Decrypted buffer with key {:#x} successfully! Decrypted buffer address: {:p}", image_base, decrypted_buffer.as_mut_ptr());
 }
 
 fn rtl_encrypt_memory(image_base: isize, image_size: usize) -> Result<Vec<u8>, ()> {
@@ -70,6 +79,40 @@ fn rtl_decrypt_memory(image_base: isize, image_size: usize) -> Result<Vec<u8>, (
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/Security/Authentication/Identity/fn.SystemFunction041.html
     let status =
         unsafe { SystemFunction041(image_buffer.as_mut_ptr() as _, image_buffer.len() as u32, 0) };
+
+    if !NT_SUCCESS(status) {
+        return Err(());
+    }
+
+    Ok(image_buffer)
+}
+
+extern "system" {
+    fn SystemFunction032(data: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> NTSTATUS;
+}
+
+fn encrypt_or_decrypt_mem_region_with_key(
+    image_base: isize,
+    image_size: usize,
+    secret: &mut Vec<u8>,
+) -> Result<Vec<u8>, ()> {
+    let mut image_buffer: Vec<u8> =
+        unsafe { std::slice::from_raw_parts_mut(image_base as *mut u8, image_size).to_vec() };
+
+    // https://doxygen.reactos.org/df/d13/sysfunc_8c.html#a66d55017b8625d505bd6c5707bdb9725
+    let key = UNICODE_STRING {
+        Length: secret.len() as u16,
+        MaximumLength: secret.len() as u16,
+        Buffer: secret.as_mut_ptr() as *mut u16,
+    };
+
+    let mut data = UNICODE_STRING {
+        Length: image_buffer.len() as u16,
+        MaximumLength: image_buffer.len() as u16,
+        Buffer: image_buffer.as_mut_ptr() as *mut u16,
+    };
+
+    let status = unsafe { SystemFunction032(&mut data, &key) };
 
     if !NT_SUCCESS(status) {
         return Err(());
