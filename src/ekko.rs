@@ -71,7 +71,7 @@ pub fn ekko(sleep_time: u32) {
     // Creates or opens a named or unnamed event object.
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventw
     let h_event = unsafe { CreateEventW(null(), 0, 0, null()) };
-    log::info!("[+] h_event: {:#x}", h_event);
+    //log::info!("[+] h_event: {:#x}", h_event);
 
     if h_event == 0 {
         panic!("[!] CreateEventW failed with error: {}", unsafe { GetLastError() });
@@ -80,7 +80,7 @@ pub fn ekko(sleep_time: u32) {
     // Creates a queue for timers. Timer-queue timers are lightweight objects that enable you to specify a callback function to be called at a specified time.
     // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueue
     let h_timer_queue = unsafe { CreateTimerQueue() };
-    log::info!("[+] h_timer_queue: {:#x}", h_timer_queue);
+    //log::info!("[+] h_timer_queue: {:#x}", h_timer_queue);
 
     if h_timer_queue == 0 {
         panic!("[!] CreateTimerQueue failed with error: {}", unsafe { GetLastError() });
@@ -91,8 +91,8 @@ pub fn ekko(sleep_time: u32) {
     let nt_headers = unsafe { (dos_header as u64 + (*dos_header).e_lfanew as u64) as *mut IMAGE_NT_HEADERS64 };
     let image_size = unsafe { (*nt_headers).OptionalHeader.SizeOfImage };
 
-    log::info!("[+] Image Base: {:#x}", image_base as u64);
-    log::info!("[+] Image Size: {:#x}", image_size as u64);
+    //log::info!("[+] Image Base: {:#x}", image_base as u64);
+    //log::info!("[+] Image Size: {:#x}", image_size as u64);
 
     let mut key_buf: [u8; 16] = [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55];
     let key = UString {
@@ -118,15 +118,15 @@ pub fn ekko(sleep_time: u32) {
     let wait_for_single_object = unsafe { GetProcAddress(LoadLibraryA("kernel32.dll\0".as_ptr()), "WaitForSingleObject\0".as_ptr()).unwrap() as u64 };
     let set_event = unsafe { GetProcAddress(LoadLibraryA("kernel32.dll\0".as_ptr()), "SetEvent\0".as_ptr()).unwrap() as u64 };
 
-    log::info!("[+] RtlCaptureContext: {:#x}", rtl_capture_context);
-    log::info!("[+] NtContinue: {:#x}", nt_continue);
-    log::info!("[+] SystemFunction032: {:#x}", system_function032);
-    log::info!("[+] VirtualProtect: {:#x}", virtual_protect);
-    log::info!("[+] WaitForSingleObject: {:#x}", wait_for_single_object);
-    log::info!("[+] SetEvent: {:#x}", set_event);
+    //log::info!("[+] RtlCaptureContext: {:#x}", rtl_capture_context);
+    //log::info!("[+] NtContinue: {:#x}", nt_continue);
+    //log::info!("[+] SystemFunction032: {:#x}", system_function032);
+    //log::info!("[+] VirtualProtect: {:#x}", virtual_protect);
+    //log::info!("[+] WaitForSingleObject: {:#x}", wait_for_single_object);
+    //log::info!("[+] SetEvent: {:#x}", set_event);
 
     //pause();
-    log::info!("[+] Calling CreateTimerQueueTimer with ctx_thread");
+    //log::info!("[+] Calling CreateTimerQueueTimer with ctx_thread");
 
     // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
     // https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-context
@@ -202,7 +202,7 @@ pub fn ekko(sleep_time: u32) {
         rop_set_evt.Rcx = h_event as u64;
         //dump_set_event_context(&rop_set_evt);
 
-        //println!("[INFO] Queue timers");
+        log::info!("[+] Queue timers");
         unsafe 
         {
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_prot_rw as *const _ as *const _, 100, 0, WT_EXECUTEINTIMERTHREAD);
@@ -217,11 +217,11 @@ pub fn ekko(sleep_time: u32) {
 
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_set_evt as *const _ as *const _,  600, 0, WT_EXECUTEINTIMERTHREAD);
     
-            //println!("[INFO] Wait for hEvent");
+            log::info!("[+] Wait for hEvent");
 
             WaitForSingleObject(h_event, INFINITE); //0xFFFFFFFF
 
-            //println!("[INFO] Finished waiting for event");
+            log::info!("[+] Finished waiting for event");
         }
     }
 
