@@ -1,10 +1,41 @@
 # Ekko in Rust
 
-A small sleep obfuscation technique that uses `CreateTimerQueueTimer` Win32 API in Rust. This is ported from C https://github.com/Cracked5pider/Ekko/ to Rust.
+A small sleep obfuscation technique that uses the `CreateTimerQueueTimer` Win32 API function ported from C https://github.com/Cracked5pider/Ekko/ to Rust.
 
 ## Debugging
 
 For debugging uncomment `env_logger::init();` in main and set Powershell environment variable to `$Env:RUST_LOG="info"`.
+
+## Example
+
+```
+PS C:\Users\memN0ps\Documents\GitHub\ekko-rs\target\debug\ekko-rs.exe
+[*] Ekko Sleep Obfuscation by @memN0ps and @trickster0. Full credits to Cracked5pider (@C5pider), Austin Hudson (@SecIdiot), Peter Winter-Smith (@peterwintrsmith)
+[+] Queue timers
+[+] Wait for hEvent
+[+] Finished waiting for event
+[+] Queue timers
+[+] Wait for hEvent
+[+] Finished waiting for event
+[+] Queue timers
+[+] Wait for hEvent
+[+] Finished waiting for event
+[+] Queue timers
+[+] Wait for hEvent
+[+] Finished waiting for event
+[+] Queue timers
+[+] Wait for hEvent
+[+] Finished waiting for event
+[+] Queue timers
+[+] Wait for hEvent
+[+] Finished waiting for event
+[+] Queue timers
+[+] Wait for hEvent
+[+] Finished waiting for event
+[+] Queue timers
+[+] Wait for hEvent
+[+] Finished waiting for event
+```
 
 ## Credits / References
 

