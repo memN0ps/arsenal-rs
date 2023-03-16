@@ -2,6 +2,7 @@ use std::{
     ffi::c_void,
     ptr::{null, null_mut},
 };
+use ntapi::winapi::shared::ntdef::PVOID;
 use windows_sys::Win32::{
     Foundation::{GetLastError, HANDLE},
     System::{
@@ -42,7 +43,7 @@ extern "system" {
 struct UString {
     length: u32,
     maximum_length: u32,
-    buffer: *mut u8,
+    buffer: PVOID,
 }
 
 // BUG in windows-rs/windows-sys and WINAPI: https://github.com/microsoft/win32metadata/issues/1044
@@ -63,7 +64,7 @@ impl core::ops::DerefMut for ProperlyAlignedContext {
     }
 }
 
-pub fn ekko(sleep_time: u32, secret_key: &mut Vec<u8>) {
+pub fn ekko(sleep_time: u32) {
     let mut h_new_timer: HANDLE = 0;
     let mut old_protect: u32 = 0;
 
@@ -93,16 +94,17 @@ pub fn ekko(sleep_time: u32, secret_key: &mut Vec<u8>) {
     log::info!("[+] Image Base: {:#x}", image_base as u64);
     log::info!("[+] Image Size: {:#x}", image_size as u64);
 
+    let mut key_buf: [u8; 16] = [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55];
     let key = UString {
-        length: secret_key.len() as u32,
-        maximum_length: secret_key.len() as u32,
-        buffer: secret_key.as_mut_ptr(),
+        length: key_buf.len() as u32,
+        maximum_length: key_buf.len() as u32,
+        buffer: key_buf.as_mut_ptr() as _,
     };
 
     let mut data = UString {
         length: image_size as u32,
         maximum_length: image_size as u32,
-        buffer: image_base as *mut u8,
+        buffer: image_base as _,
     };
 
     let rtl_capture_context = unsafe { GetProcAddress(LoadLibraryA("ntdll\0".as_ptr()), "RtlCaptureContext\0".as_ptr()).unwrap() as u64 };
