@@ -51,7 +51,7 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
     // Creates or opens a named or unnamed event object.
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createeventw
     let h_event = unsafe { CreateEventW(null(), 0, 0, null()) };
-    //log::info!("[+] h_event: {:#x}", h_event);
+    log::debug!("[+] h_event: {:#x}", h_event);
 
     if h_event == 0 {
         panic!("[!] CreateEventW failed with error: {}", unsafe { GetLastError() });
@@ -60,7 +60,7 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
     // Creates a queue for timers. Timer-queue timers are lightweight objects that enable you to specify a callback function to be called at a specified time.
     // https://learn.microsoft.com/en-us/windows/win32/api/threadpoollegacyapiset/nf-threadpoollegacyapiset-createtimerqueue
     let h_timer_queue = unsafe { CreateTimerQueue() };
-    //log::info!("[+] h_timer_queue: {:#x}", h_timer_queue);
+    log::debug!("[+] h_timer_queue: {:#x}", h_timer_queue);
 
     if h_timer_queue == 0 {
         panic!("[!] CreateTimerQueue failed with error: {}", unsafe { GetLastError() });
@@ -71,8 +71,8 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
     let nt_headers = unsafe { (dos_header as u64 + (*dos_header).e_lfanew as u64) as *mut IMAGE_NT_HEADERS64 };
     let image_size = unsafe { (*nt_headers).OptionalHeader.SizeOfImage };
 
-    //log::info!("[+] Image Base: {:#x}", image_base as u64);
-    //log::info!("[+] Image Size: {:#x}", image_size as u64);
+    log::debug!("[+] Image Base: {:#x}", image_base as u64);
+    log::debug!("[+] Image Size: {:#x}", image_size as u64);
 
     //let mut key_buf: [u8; 16] = [0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55];
     let key = UString {
@@ -98,15 +98,15 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
     let wait_for_single_object = unsafe { GetProcAddress(LoadLibraryA("kernel32.dll\0".as_ptr()), "WaitForSingleObject\0".as_ptr()).unwrap() as u64 };
     let set_event = unsafe { GetProcAddress(LoadLibraryA("kernel32.dll\0".as_ptr()), "SetEvent\0".as_ptr()).unwrap() as u64 };
 
-    //log::info!("[+] RtlCaptureContext: {:#x}", rtl_capture_context);
-    //log::info!("[+] NtContinue: {:#x}", nt_continue);
-    //log::info!("[+] SystemFunction032: {:#x}", system_function032);
-    //log::info!("[+] VirtualProtect: {:#x}", virtual_protect);
-    //log::info!("[+] WaitForSingleObject: {:#x}", wait_for_single_object);
-    //log::info!("[+] SetEvent: {:#x}", set_event);
+    log::debug!("[+] RtlCaptureContext: {:#x}", rtl_capture_context);
+    log::debug!("[+] NtContinue: {:#x}", nt_continue);
+    log::debug!("[+] SystemFunction032: {:#x}", system_function032);
+    log::debug!("[+] VirtualProtect: {:#x}", virtual_protect);
+    log::debug!("[+] WaitForSingleObject: {:#x}", wait_for_single_object);
+    log::debug!("[+] SetEvent: {:#x}", set_event);
 
-    //pause();
-    //log::info!("[+] Calling CreateTimerQueueTimer with ctx_thread");
+    pause();
+    log::debug!("[+] Calling CreateTimerQueueTimer with ctx_thread");
 
     // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
     // https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-context
@@ -137,7 +137,7 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
         rop_prot_rw.Rdx = image_size as u64;
         rop_prot_rw.R8 = PAGE_READWRITE as u64;
         rop_prot_rw.R9 = &mut old_protect as *mut _ as u64;
-        //dump_virtual_protect_context(&rop_prot_rw);
+        dump_virtual_protect_context(&rop_prot_rw);
 
         // https://doxygen.reactos.org/df/d13/sysfunc_8c.html#a66d55017b8625d505bd6c5707bdb9725
         // NTSTATUS WINAPI SystemFunction032(struct ustring *data, const struct ustring *key)
@@ -146,7 +146,7 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
         rop_mem_enc.Rip = system_function032 as u64;
         rop_mem_enc.Rcx = &mut data as *mut _ as u64;
         rop_mem_enc.Rdx = &key as *const _ as u64;
-        //dump_system_function032_context(&rop_mem_enc);
+        dump_system_function032_context(&rop_mem_enc);
 
         // pub unsafe extern "system" fn WaitForSingleObject(hhandle: HANDLE, dwmilliseconds: u32) -> WIN32_ERROR
         // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Threading/fn.WaitForSingleObject.html
@@ -154,7 +154,7 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
         rop_delay.Rip = wait_for_single_object as u64;
         rop_delay.Rcx = -1 as isize as u64; // NtCurrentProcess
         rop_delay.Rdx = sleep_time as u64;
-        //dump_wait_for_single_object_context(&rop_delay);
+        dump_wait_for_single_object_context(&rop_delay);
 
         // https://doxygen.reactos.org/df/d13/sysfunc_8c.html#a66d55017b8625d505bd6c5707bdb9725
         // NTSTATUS WINAPI SystemFunction032(struct ustring *data, const struct ustring *key)
@@ -163,7 +163,7 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
         rop_mem_dec.Rip = system_function032 as u64;
         rop_mem_dec.Rcx = &mut data as *mut _ as u64;
         rop_mem_dec.Rdx = &key as *const _ as u64;
-        //dump_system_function032_context(&rop_mem_dec);
+        dump_system_function032_context(&rop_mem_dec);
 
         // pub unsafe extern "system" fn VirtualProtect(lpaddress: *const c_void, dwsize: usize, flnewprotect: PAGE_PROTECTION_FLAGS, lpfloldprotect: *mut PAGE_PROTECTION_FLAGS) -> BOOL
         // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Memory/fn.VirtualProtect.html
@@ -173,28 +173,23 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
         rop_prot_rx.Rdx = image_size as u64;
         rop_prot_rx.R8 = PAGE_EXECUTE_READWRITE as u64;
         rop_prot_rx.R9 = &mut old_protect as *mut _ as u64;
-        //dump_virtual_protect_context(&rop_prot_rx);
+        dump_virtual_protect_context(&rop_prot_rx);
 
         // https://docs.rs/windows-sys/latest/windows_sys/Win32/System/Threading/fn.SetEvent.html
         // pub unsafe extern "system" fn SetEvent(hevent: HANDLE) -> BOOL
         rop_set_evt.Rsp -= 8;
         rop_set_evt.Rip = set_event as u64;
         rop_set_evt.Rcx = h_event as u64;
-        //dump_set_event_context(&rop_set_evt);
+        dump_set_event_context(&rop_set_evt);
 
         println!("[+] Queue timers");
         unsafe 
         {
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_prot_rw as *const _ as *const _, 100, 0, WT_EXECUTEINTIMERTHREAD);
-    
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_mem_enc as *const _ as *const _, 200, 0, WT_EXECUTEINTIMERTHREAD);
-            
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_delay as *const _ as *const _, 300, 0, WT_EXECUTEINTIMERTHREAD);
-
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_mem_dec as *const _ as *const _, 400, 0, WT_EXECUTEINTIMERTHREAD);
-
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_prot_rx as *const _ as *const _, 500,0, WT_EXECUTEINTIMERTHREAD);
-
             CreateTimerQueueTimer(&mut h_new_timer, h_timer_queue, nt_continue_ptr, &rop_set_evt as *const _ as *const _,  600, 0, WT_EXECUTEINTIMERTHREAD);
     
             println!("[+] Wait for hEvent");
@@ -218,56 +213,61 @@ fn get_input() -> std::io::Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
 /// Used for debugging
 pub fn pause() {
-    match get_input() {
-        Ok(buffer) => println!("{:?}", buffer),
-        Err(error) => println!("error: {}", error),
-    };
+    if cfg!(debug_assertions) {
+        match get_input() {
+            Ok(buffer) => println!("{:?}", buffer),
+            Err(error) => println!("error: {}", error),
+        };
+    }
 }
 
-#[allow(dead_code)]
 fn dump_virtual_protect_context(rop: &ProperlyAlignedContext) {
-    log::info!(
-        "[+] RSP: {:#x} RIP: {:#x} -> VirtualProtect({:#x}, {:#x}, {:#x}, {:#x})",
-        rop.Rsp,
-        rop.Rip,
-        rop.Rcx,
-        rop.Rdx,
-        rop.R8,
-        rop.R9
-    );
+    if cfg!(debug_assertions) {
+        log::debug!(
+            "[+] RSP: {:#x} RIP: {:#x} -> VirtualProtect({:#x}, {:#x}, {:#x}, {:#x})",
+            rop.Rsp,
+            rop.Rip,
+            rop.Rcx,
+            rop.Rdx,
+            rop.R8,
+            rop.R9
+        );
+    }
 }
 
-#[allow(dead_code)]
 fn dump_system_function032_context(rop: &ProperlyAlignedContext) {
-    log::info!(
-        "[+] RSP: {:#x} RIP: {:#x} -> SystemFunction032({:#x}, {:#x})",
-        rop.Rsp,
-        rop.Rip,
-        rop.Rcx,
-        rop.Rdx
-    );
+    if cfg!(debug_assertions) {
+        log::debug!(
+            "[+] RSP: {:#x} RIP: {:#x} -> SystemFunction032({:#x}, {:#x})",
+            rop.Rsp,
+            rop.Rip,
+            rop.Rcx,
+            rop.Rdx
+        );
+    }
 }
 
-#[allow(dead_code)]
 fn dump_wait_for_single_object_context(rop: &ProperlyAlignedContext) {
-    log::info!(
-        "[+] RSP: {:#x} RIP: {:#x} -> WaitForSingleObject({:#x}, {:#x})",
-        rop.Rsp,
-        rop.Rip,
-        rop.Rcx,
-        rop.Rdx
-    );
+    if cfg!(debug_assertions) {
+        log::debug!(
+            "[+] RSP: {:#x} RIP: {:#x} -> WaitForSingleObject({:#x}, {:#x})",
+            rop.Rsp,
+            rop.Rip,
+            rop.Rcx,
+            rop.Rdx
+        );
+    }
 }
 
-#[allow(dead_code)]
 fn dump_set_event_context(rop: &ProperlyAlignedContext) {
-    log::info!(
-        "[+] RSP: {:#x} RIP: {:#x} -> SetEvent({:#x})",
-        rop.Rsp,
-        rop.Rip,
-        rop.Rcx
-    );
+    if cfg!(debug_assertions) {
+        log::debug!(
+            "[+] RSP: {:#x} RIP: {:#x} -> SetEvent({:#x})",
+            rop.Rsp,
+            rop.Rip,
+            rop.Rcx
+        );
+    }
 }
