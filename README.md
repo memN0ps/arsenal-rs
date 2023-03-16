@@ -2,10 +2,6 @@
 
 A small sleep obfuscation technique that uses the `CreateTimerQueueTimer` Win32 API function ported from C https://github.com/Cracked5pider/Ekko/ to Rust.
 
-## Debugging
-
-For debugging uncomment `env_logger::init();` in main and set Powershell environment variable to `$Env:RUST_LOG="info"`.
-
 ## Example
 
 ```
