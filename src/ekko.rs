@@ -105,7 +105,6 @@ pub fn ekko(sleep_time: u32, key_buf: &mut Vec<u8>) {
     log::debug!("[+] WaitForSingleObject: {:#x}", wait_for_single_object);
     log::debug!("[+] SetEvent: {:#x}", set_event);
 
-    pause();
     log::debug!("[+] Calling CreateTimerQueueTimer with ctx_thread");
 
     // Contains processor-specific register data. The system uses CONTEXT structures to perform various internal operations.
@@ -213,6 +212,7 @@ fn get_input() -> std::io::Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 /// Used for debugging
 pub fn pause() {
     if cfg!(debug_assertions) {
