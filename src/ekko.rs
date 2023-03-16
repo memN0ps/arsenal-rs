@@ -7,7 +7,7 @@ use windows_sys::Win32::{
     System::{
         Diagnostics::Debug::{CONTEXT, IMAGE_NT_HEADERS64},
         LibraryLoader::{GetModuleHandleA, GetProcAddress, LoadLibraryA},
-        Memory::{PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS, PAGE_READWRITE},
+        Memory::{PAGE_EXECUTE_READWRITE, PAGE_READWRITE},
         SystemServices::IMAGE_DOS_HEADER,
         Threading::{
             CreateEventW, CreateTimerQueue, CreateTimerQueueTimer, DeleteTimerQueue,
