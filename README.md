@@ -1,6 +1,6 @@
 ## Reflective Loader in Rust (4KB in size)
 
-A small reflective loader PoC in Rust. I remade this from my old project, which is almost the same but smaller file size: https://github.com/memN0ps/arsenal-rs/tree/main/rdi-rs
+A small reflective loader PoC in Rust. I remade this from my old project (https://github.com/memN0ps/arsenal-rs/tree/main/rdi-rs), which is almost the same but has a smaller file size, thanks to this repo: https://github.com/johnthagen/min-sized-rust
 
 ## Features
 
@@ -42,7 +42,13 @@ PS C:\Users\developer\Documents\GitHub\rdi-rs\inject> cargo run
 
 ![poc](poc.png)
 
-Note: This is just a PoC, and there are still some OPSEC to worry about. I'll leave that as an exercise for the user. I have included the references below for you to check out to weaponize this for red team engagements.
+4. File size 
+
+![size](size.png)
+
+![size](size2.png)
+
+Note: This is just a PoC, and there is still some OPSEC to worry about. I'll leave that as an exercise for the user. I have included the references below for you to check out to weaponize this for red team engagements.
 
 ## Credits / References / Motivation / Thanks
 
