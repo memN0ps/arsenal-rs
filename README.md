@@ -1,4 +1,4 @@
-# Perform direct or indirect syscalls in Rust using the FreshyCalls/SysWhispers technique
+# Syscalls - A direct or indirect Syscall library in Rust
 
 The Rust version of `Freshycalls` or `Syswhispers 1 or 2 or 3` diverges in its approach from the C/C++/Python versions. While it shares similar techniques, this project doesn't generate header/ASM files or output like them. Instead, it functions as a library. Inspired by a friend [@janoglezcampos](https://github.com/janoglezcampos/rust_syscalls/) ([@httpyxel](https://twitter.com/httpyxel)), I created this project to explore the FreshyCalls/SysWhispers technique that `rust_syscalls` doesn't employ.
 
