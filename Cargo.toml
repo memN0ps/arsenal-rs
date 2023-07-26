@@ -3,4 +3,6 @@ resolver = "2"
 
 members = [
     "arbitrary_overwrite",
+    "buffer_overflow",
+    "exploitation",
 ]

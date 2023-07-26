@@ -1,12 +1,11 @@
 [package]
-name = "arbitrary_overwrite"
+name = "buffer_overflow"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-exploitation = { path = "../exploitation" }
 
 [dependencies.windows-sys]
 version = "0.48.0"
