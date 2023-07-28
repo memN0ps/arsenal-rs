@@ -4,5 +4,6 @@ resolver = "2"
 members = [
     "arbitrary_overwrite",
     "buffer_overflow",
+    "use_after_free",
     "exploitation",
 ]
