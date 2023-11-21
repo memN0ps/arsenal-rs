@@ -1,0 +1,6 @@
+edition = "2021"
+
+brace_style = "AlwaysNextLine"
+control_brace_style = "AlwaysNextLine"
+format_strings = false
+max_width = 10000
